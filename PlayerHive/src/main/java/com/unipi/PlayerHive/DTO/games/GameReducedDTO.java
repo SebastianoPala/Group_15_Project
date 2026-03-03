@@ -10,7 +10,6 @@ public class GameReducedDTO {
     private String price;
     private String discount;
     private String imageURL;
-    private List<String> supportedOS;
     private Float userScore;
     private List<String> genres;
 }

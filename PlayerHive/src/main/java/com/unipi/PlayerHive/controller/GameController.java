@@ -3,6 +3,7 @@ package com.unipi.PlayerHive.controller;
 import com.unipi.PlayerHive.DTO.games.GameInfoDTO;
 import com.unipi.PlayerHive.DTO.games.GameReducedDTO;
 import com.unipi.PlayerHive.DTO.games.UserGameInfoDTO;
+import com.unipi.PlayerHive.service.GameService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,25 +22,30 @@ public class GameController {
 
     @GetMapping("/{gameId}")
     public ResponseEntity<GameInfoDTO> getInfo(@PathVariable String gameId){
-        return ResponseEntity.ok(gameService.method(gameId));
+        return ResponseEntity.ok(gameService.getGameById(gameId));
     }
 
     @GetMapping("/search/{gameName}")
     public ResponseEntity<List<GameReducedDTO>> searchByName(@PathVariable String gameName){
-        return ResponseEntity.ok(gameService.method(gameName));
+        return ResponseEntity.ok(gameService.searchGameById(gameName));
     }
 
-    @PostMapping("/addToLibrary")
-    public ResponseEntity<String> addToLibrary(@Valid @RequestBody UserGameInfoDTO userGameInfo){
-        return ResponseEntity.ok("The game has been added successfully");
-    }
-    @DeleteMapping("/removeFromLibrary/{gameId}")
-    public ResponseEntity<String> removeFromLibrary(@PathVariable String gameId){
-        return ResponseEntity.ok("The game has been added successfully");
-    }
+
 
     //ADMIN
-    @PostMapping("/AddGame")
-    @PostMapping("/ModifyGame")
-    @DeleteMapping("/DeleteGame/{gameId}")
+    @PostMapping("/addGame")
+    public ResponseEntity<String> addGame(@Valid @RequestBody GameInfoDTO gameInfo){
+        gameService.addGame(gameInfo);
+        return ResponseEntity.ok("The game has been added successfully");
+    }
+    @PostMapping("/editGame")
+    public ResponseEntity<String> editGame(@RequestBody GameInfoDTO gameInfo){
+        gameService.editGame(gameInfo);
+        return ResponseEntity.ok("The game info has been edited successfully");
+    }
+    @DeleteMapping("/deleteGame/{gameId}")
+    public ResponseEntity<String> deleteGame(@PathVariable String gameId){
+        gameService.deleteGame(gameId);
+        return ResponseEntity.ok("The game info has been edited successfully");
+    }
 }

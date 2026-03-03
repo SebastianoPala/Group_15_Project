@@ -13,7 +13,7 @@ public class GameInfoDTO {
     private String discount;
     private String description;
     private List<String> supportedLanguages;
-    private List<Review> reviews;
+    private List<Review> reviews; // MANAGE THE REVIEWS???
     private String imageURL;
     private List<String> supportedOS;
     private Float userScore;
