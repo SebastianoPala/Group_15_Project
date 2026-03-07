@@ -41,6 +41,7 @@ def process_steam_data(input_filename, output_filename):
             "release_date": game_data.get("release_date"),
             "price": game_data.get("price"),
             "detailed_description": game_data.get("detailed_description"),
+            "reviews":[],
             "header_image": game_data.get("header_image"),
             "supportedOS": supported_os,
             "achievements": game_data.get("achievements"),
