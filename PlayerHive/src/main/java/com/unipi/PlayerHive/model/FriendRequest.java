@@ -10,6 +10,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -17,33 +18,9 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-
-@Document(collection = "users")
-public class User {
-
-    @Id
-    private String id;
-
+public class FriendRequest {
+    private String user_id;
     private String username;
-    private String password; // the salt??
-
-    private String role;
-
-    @Email
-    private String email;
-
     private String pfpURL;
-
-    private int numGames;
-
-    private float hoursPlayed;
-
-    @Past
-    private LocalDate birthDate;
-
-    private Integer friends;
-
-    private List<FriendRequest> friendRequests;
-
-
+    private LocalDateTime timestamp;
 }

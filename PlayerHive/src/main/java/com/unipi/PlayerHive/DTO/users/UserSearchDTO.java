@@ -1,4 +1,4 @@
 package com.unipi.PlayerHive.DTO.users;
 
-public class UserRegistrationDTO {
+public class UserSearchDTO {
 }
