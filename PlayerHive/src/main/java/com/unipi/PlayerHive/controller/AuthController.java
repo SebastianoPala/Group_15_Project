@@ -1,3 +1,4 @@
+    /*
 package com.unipi.PlayerHive.controller;
 
 
@@ -18,7 +19,6 @@ public class AuthController {
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
-    /*
     // Gamer Registration
     @PostMapping("/register")
     public ResponseEntity<> registerGamer(@Valid @RequestBody bla bla) {
@@ -31,5 +31,5 @@ public class AuthController {
         return null;
     }
 
-     */
 }
+     */

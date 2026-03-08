@@ -25,7 +25,7 @@ public class User {
     private String id;
 
     private String username;
-    private String password;
+    private String password; // the salt??
 
     private String role;
 
@@ -42,6 +42,8 @@ public class User {
     private LocalDate birthDate;
 
     private Integer friends;
+
+    private List<FriendRequest> friendRequests;
 
 
 }

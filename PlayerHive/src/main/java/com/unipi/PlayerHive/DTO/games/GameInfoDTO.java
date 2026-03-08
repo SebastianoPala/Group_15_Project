@@ -1,25 +1,32 @@
 package com.unipi.PlayerHive.DTO.games;
 
-import com.unipi.PlayerHive.model.Review;
+import jakarta.validation.constraints.Past;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.List;
 
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+
 public class GameInfoDTO {
     private String name;
-    private LocalDate releaseDate;
-    private Integer requiredAge;
-    private String price;
-    private String discount;
+    private String releaseDate;
+    private Double price;
+    private Integer discount;
     private String description;
-    private List<String> supportedLanguages;
-    private List<Review> reviews; // MANAGE THE REVIEWS???
+    private List<ReviewDTO> reviews;
     private String imageURL;
     private List<String> supportedOS;
-    private Float userScore;
     private Integer achievements;
+    private Float userScore;
     private Float averagePlaytime;
     private List<String> developers;
-    private List<String> categories;
+    private List<String> publishers;
     private List<String> genres;
 }
