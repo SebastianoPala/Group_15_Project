@@ -18,10 +18,10 @@ import java.time.LocalDateTime;
 public class Review {
     private String user_id;
     private String username;
-    private String content;
+    private String review_text;
 
     @NotNull
-    private Float rating;
+    private Float score;
 
     private LocalDateTime timestamp;
 }
