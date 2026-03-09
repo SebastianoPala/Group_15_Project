@@ -1,7 +1,0 @@
-[paths]
-source = faker/
-
-[run]
-omit =
-    faker/sphinx/autodoc.py
-    faker/sphinx/documentor.py
