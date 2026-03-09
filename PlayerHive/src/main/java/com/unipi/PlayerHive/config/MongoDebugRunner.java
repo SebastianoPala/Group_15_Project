@@ -1,60 +1,86 @@
-package com.unipi.PlayerHive.config; // Adjust package name as needed
+package com.unipi.PlayerHive.config;
 
 import org.bson.Document;
-import org.bson.types.ObjectId;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+import java.util.Map;
 
 @Component
 public class MongoDebugRunner implements CommandLineRunner {
 
     private final MongoTemplate mongoTemplate;
+    private final Environment env;
+    private final Neo4jClient neo4jClient; // Injected to test Neo4j
 
-    public MongoDebugRunner(MongoTemplate mongoTemplate) {
+    public MongoDebugRunner(MongoTemplate mongoTemplate, Environment env, Neo4jClient neo4jClient) {
         this.mongoTemplate = mongoTemplate;
+        this.env = env;
+        this.neo4jClient = neo4jClient;
     }
-
+// REMOVE THIS FILE ONCE TESTING IS OVER
+// AI generated and completely useless for the project itself
     @Override
     public void run(String... args) {
         System.out.println("\n==============================================");
-        System.out.println("====== MONGODB CONNECTION DEBUG START ========");
+        System.out.println("====== DB CONNECTION & DATA DEBUG START ======         REMOVE WHEN DONE");
         System.out.println("==============================================");
 
         try {
             // 1. Check which database Spring actually connected to
             String dbName = mongoTemplate.getDb().getName();
-            System.out.println("Connected Database Name: " + dbName);
+            System.out.println("Connected MongoDB Name: " + dbName);
 
-            // 2. List all collections in that database
-            System.out.println("\nAvailable Collections in '" + dbName + "':");
-            mongoTemplate.getCollectionNames().forEach(name -> System.out.println(" -> " + name));
+            // 2. Look for "Undertale" in MongoDB
+            String searchName = "Undertale";
+            System.out.println("\nSearching MongoDB for game: '" + searchName + "'...");
 
-            // 3. Test a raw query bypassing the Repository completely
-            String testId = "68f0ea5db2c0422492358a5b";
-            System.out.println("\nTesting raw query for Game ID: " + testId);
+            Document foundGame = mongoTemplate.getDb().getCollection("games")
+                    .find(new Document("name", searchName)).first();
 
-            // Try to find it as a strict ObjectId (like Compass shows)
-            Document foundAsObjectId = mongoTemplate.getDb().getCollection("games")
-                    .find(new Document("_id", new ObjectId(testId))).first();
+            if (foundGame != null) {
+                System.out.println(" -> SUCCESS! Game found in MongoDB.");
 
-            // Try to find it as a plain String (just in case)
-            Document foundAsString = mongoTemplate.getDb().getCollection("games")
-                    .find(new Document("_id", testId)).first();
+                // Extract the ObjectId and convert it to a Hex String
+                String mongoId = foundGame.getObjectId("_id").toHexString();
+                System.out.println(" -> Extracted Game ID: " + mongoId);
 
-            System.out.println("Found using ObjectId? " + (foundAsObjectId != null));
-            System.out.println("Found using String? " + (foundAsString != null));
+                // 3. Look for the corresponding Node in Neo4j
+                System.out.println("\nSearching Neo4j for Node with game_id: '" + mongoId + "'...");
 
-            if(foundAsObjectId != null) {
-                System.out.println("Game Name found: " + foundAsObjectId.getString("name"));
+                try {
+                    // Executing a raw Cypher query.
+                    // Note: This assumes your Neo4j nodes have the label 'Game'.
+                    Optional<Map<String, Object>> neo4jResult = neo4jClient
+                            .query("MATCH (n:Game {game_id: $mongoId}) RETURN n.name AS name, n.game_id AS id")
+                            .bind(mongoId).to("mongoId")
+                            .fetch()
+                            .first();
+
+                    if (neo4jResult.isPresent()) {
+                        System.out.println(" -> SUCCESS! Matching node found in Neo4j.");
+                        System.out.println(" -> Node Name: " + neo4jResult.get().get("name"));
+                    } else {
+                        System.out.println(" -> WARNING: Game found in MongoDB, but NO matching node found in Neo4j!");
+                    }
+                } catch (Exception neo4jEx) {
+                    System.err.println(" -> ERROR querying Neo4j: " + neo4jEx.getMessage());
+                }
+
+            } else {
+                System.out.println(" -> WARNING: Game '" + searchName + "' was NOT found in MongoDB.");
             }
 
         } catch (Exception e) {
-            System.err.println("Error during MongoDB debug: " + e.getMessage());
+            System.err.println("Error during debug: " + e.getMessage());
         }
 
         System.out.println("==============================================");
-        System.out.println("======= MONGODB CONNECTION DEBUG END =========");
+        System.out.println("======= DB CONNECTION & DATA DEBUG END =======");
         System.out.println("==============================================\n");
     }
 }
