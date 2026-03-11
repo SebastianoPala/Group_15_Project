@@ -4,8 +4,8 @@ import com.unipi.PlayerHive.DTO.games.GameInfoDTO;
 import com.unipi.PlayerHive.DTO.games.GameSearchDTO;
 import com.unipi.PlayerHive.DTO.games.addReviewDTO;
 import com.unipi.PlayerHive.model.Game;
-import com.unipi.PlayerHive.repository.GameNeo4jRepository;
-import com.unipi.PlayerHive.repository.GameRepository;
+import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
+import com.unipi.PlayerHive.repository.games.GameRepository;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 
@@ -24,28 +24,17 @@ public class GameService {
         this.gameNeo4jRepository = gameNeo4jRepository;
     }
 
-    public GameInfoDTO getGameById(String gameId) {
+    public GameInfoDTO getGameById(String gameId) { // manage high reviews number case
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new RuntimeException("Game not found"));
-        return new GameInfoDTO(
-                game.getName(),
-                game.getReleaseDate(),
-                game.getPrice(),
-                game.getDiscount(),
-                game.getDescription(),
-                game.getReviews(),
-                game.getImageURL(),
-                game.getSupportedOS(),
-                game.getAchievements(),
-                game.getUserScore(),
-                game.getAveragePlaytime(),
-                game.getDevelopers(),
-                game.getPublishers(),
-                game.getGenres()
-        );
+        return new GameInfoDTO(game);
     }
 
-    public List<GameSearchDTO> searchGameById(String gameName) {
-        return null;
+    public List<GameSearchDTO> searchGameByName(String gameName) { // paginate results
+        List<Game> searchResult = gameRepository.searchByName(gameName).orElseThrow(() -> new RuntimeException("Game not found"));
+
+        return searchResult.stream()
+                .map(GameSearchDTO::new)
+                .toList();
     }
 
     public void addGame(@Valid GameInfoDTO gameInfo) {
@@ -61,6 +50,6 @@ public class GameService {
     }
 
 
-    public void deleteReviewFromGame(String gameId) {
+    public void deleteReviewFromGame(String gameId) { // where do we get the username from??
     }
 }
