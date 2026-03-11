@@ -25,7 +25,7 @@ public class GameController {
 
     @GetMapping("/search/{gameName}")
     public ResponseEntity<List<GameSearchDTO>> searchByName(@PathVariable String gameName){
-        return ResponseEntity.ok(gameService.searchGameById(gameName));
+        return ResponseEntity.ok(gameService.searchGameByName(gameName));
     }
 
     @PostMapping("/addReview")

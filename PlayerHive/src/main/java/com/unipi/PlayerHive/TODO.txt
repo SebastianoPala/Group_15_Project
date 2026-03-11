@@ -1,0 +1,11 @@
+REVIEWS:
+    - if a game has 100000 reviews, we cant possibly return them all in every game retrieval.
+    we have to paginate them
+
+GAMES AND USER SEARCH:
+    - if i search for the letter "e", i get one bajillion results
+    paginate games and users search result
+
+    >GameSearchDTO
+        - if i return the game id, is that a security issue / good practice?
+        - maybe sort them by user score? do we need to return user score in the general search?

@@ -1,4 +1,4 @@
-package com.unipi.PlayerHive.repository;
+package com.unipi.PlayerHive.repository.games;
 
 import com.unipi.PlayerHive.model.GameNeo4j;
 import org.springframework.stereotype.Repository;
