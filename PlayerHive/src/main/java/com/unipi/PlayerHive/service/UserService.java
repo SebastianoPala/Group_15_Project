@@ -1,10 +1,12 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.users.*;
+import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.model.UserNeo4j;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import jakarta.validation.Valid;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,8 +16,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserNeo4jRepository userNeo4jRepository;
 
+    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository) {
+        this.userRepository = userRepository;
+        this.userNeo4jRepository = userNeo4jRepository;
+    }
+
     public ProfileDTO getProfileById(String userId) {
-        return new ProfileDTO();
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        return new ProfileDTO(user);
     }
 
     public LibraryDTO getLibraryById(String userId) {

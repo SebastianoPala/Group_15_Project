@@ -9,3 +9,10 @@ GAMES AND USER SEARCH:
     >GameSearchDTO
         - if i return the game id, is that a security issue / good practice?
         - maybe sort them by user score? do we need to return user score in the general search?
+
+USERS
+    -paginate friend requests?
+    -in the profile DTO, do we need the friend request number if a user requests another user's profile????
+
+IDEAS
+    -return the most popular games per age range?
