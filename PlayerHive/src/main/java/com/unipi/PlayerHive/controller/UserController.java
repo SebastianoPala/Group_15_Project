@@ -23,6 +23,11 @@ public class UserController {
         return ResponseEntity.ok(userService.getProfileById(userId));
     }
 
+    @GetMapping("/MyProfile")
+    public ResponseEntity<OwnProfileDTO> showOwnProfile(){
+        return ResponseEntity.ok(userService.getOwnProfileById("fb39502211c742f9a7954e33")); // the user is obtained by the token, TODO
+    }
+
     @GetMapping("/library/{userId}")
     public ResponseEntity<LibraryDTO> showUserLibrary(@PathVariable String userId){
         return ResponseEntity.ok(userService.getLibraryById(userId));
@@ -43,9 +48,9 @@ public class UserController {
         return ResponseEntity.ok(userService.getFriendListById(userId));
     }
 
-    @GetMapping("/friendRequests/{userId}")
-    public ResponseEntity<List<FriendRequestDTO>> showFriendRequests(@PathVariable String userId){
-        return ResponseEntity.ok(userService.getFriendRequestsById(userId));
+    @GetMapping("/friendRequests") // user is obtained by token
+    public ResponseEntity<List<FriendRequestDTO>> showFriendRequests(){
+        return ResponseEntity.ok(userService.getFriendRequestsById("fb39502211c742f9a7954e33"));
     }
 
     @GetMapping("/search/{query}")
@@ -53,25 +58,25 @@ public class UserController {
         return ResponseEntity.ok(userService.searchUser(query));
     }
 
-    @PostMapping("sendFriendRequest/{userId}")
+    @PostMapping("/sendFriendRequest/{userId}")
     public ResponseEntity<String> sendFriendRequest(@PathVariable String userId){
         userService.sendRequestToUser(userId);
         return ResponseEntity.ok("Friend request sent successfully");
     }
 
-    @PostMapping("approveFriendRequest/{userId}")
+    @PostMapping("/approveFriendRequest/{userId}")
     public ResponseEntity<String> approveFriendRequest(@PathVariable String userId){
         userService.approveRequestFromUser(userId);
         return ResponseEntity.ok("Friend request has been approved successfully");
     }
 
-    @PostMapping("denyFriendRequest/{userId}")
+    @PostMapping("/denyFriendRequest/{userId}")
     public ResponseEntity<String> denyFriendRequest(@PathVariable String userId){
         userService.denyRequestFromUser(userId);
         return ResponseEntity.ok("Friend request has been denied successfully");
     }
 
-    @DeleteMapping("removeFriend/{userId}")
+    @DeleteMapping("/removeFriend/{userId}")
     public ResponseEntity<String> removeFriend(@PathVariable String userId){
         userService.removeFriend(userId);
         return ResponseEntity.ok("Friend removed successfully");

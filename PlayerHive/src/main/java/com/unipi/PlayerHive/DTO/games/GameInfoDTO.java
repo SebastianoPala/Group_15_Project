@@ -16,22 +16,6 @@ import java.util.List;
 @Setter
 
 public class GameInfoDTO {
-    public GameInfoDTO(Game game){
-        this.name = game.getName();
-        this.releaseDate = game.getReleaseDate();
-        this.price = game.getPrice();
-        this.discount = game.getDiscount();
-        this.description = game.getDescription();
-        this.reviews = game.getReviews();
-        this.imageURL = game.getImageURL();
-        this.supportedOS = game.getSupportedOS();
-        this.achievements = game.getAchievements();
-        this.userScore = game.getUserScore();
-        this.averagePlaytime = game.getAveragePlaytime();
-        this.developers = game.getDevelopers();
-        this.publishers = game.getPublishers();
-        this.genres = game.getGenres();
-    }
 
     private String name;
     private String releaseDate;

@@ -13,6 +13,7 @@ GAMES AND USER SEARCH:
 USERS
     -paginate friend requests?
     -in the profile DTO, do we need the friend request number if a user requests another user's profile????
+    -friend requests should be queried through the token's username
 
 IDEAS
     -return the most popular games per age range?

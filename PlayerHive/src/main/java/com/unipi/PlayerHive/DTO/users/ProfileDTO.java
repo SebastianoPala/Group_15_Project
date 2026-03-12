@@ -19,9 +19,7 @@ public class ProfileDTO {
         this.pfpURL = user.getPfpURL();
         this.numGames = user.getNumGames();
         this.hoursPlayed = user.getHoursPlayed();
-        this.birthDate = user.getBirthDate();
         this.friends = user.getFriends();
-        this.friendRequests = user.getFriendRequests().size();
     }
     private String username;
 
@@ -33,10 +31,6 @@ public class ProfileDTO {
 
     private float hoursPlayed;
 
-    private LocalDate birthDate;
-
     private Integer friends;
-
-    private Integer friendRequests; //only the number is sent
 
 }

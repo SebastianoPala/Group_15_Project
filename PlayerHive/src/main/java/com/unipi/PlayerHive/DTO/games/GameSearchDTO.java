@@ -14,14 +14,8 @@ import java.util.List;
 @Setter
 
 public class GameSearchDTO {
-    public GameSearchDTO(Game game){
-        this.game_id = game.getId();
-        this.name = game.getName();
-        this.price = game.getPrice();
-        this.discount = game.getDiscount();
-        this.imageURL = game.getImageURL();
-    }
-    private String game_id;
+
+    private String id;
     private String name;
     private Double price;
     private Integer discount;

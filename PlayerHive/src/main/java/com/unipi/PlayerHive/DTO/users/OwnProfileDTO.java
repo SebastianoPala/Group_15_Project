@@ -7,21 +7,31 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
-public class UserSearchDTO {
-    public UserSearchDTO(User user){
-        this.username = user.getUsername();
-        this.role = user.getRole();
-        this.pfpURL = user.getPfpURL();
-    }
+public class OwnProfileDTO {
+
+        //this.friendRequests = user.getFriendRequests().size();
+
+
     private String username;
 
     private String role;
 
+    private String email;
+
     private String pfpURL;
+
+    private int numGames;
+
+    private float hoursPlayed;
+
+    private LocalDate birthDate;
+
+    private Integer friends;
+
+    private Integer friendRequestsNumber; //only the number is sent
 
 }
