@@ -50,13 +50,13 @@ public class MongoDebugRunner implements CommandLineRunner {
                 System.out.println(" -> Extracted Game ID: " + mongoId);
 
                 // 3. Look for the corresponding Node in Neo4j
-                System.out.println("\nSearching Neo4j for Node with game_id: '" + mongoId + "'...");
+                System.out.println("\nSearching Neo4j for Node with id: '" + mongoId + "'...");
 
                 try {
                     // Executing a raw Cypher query.
                     // Note: This assumes your Neo4j nodes have the label 'Game'.
                     Optional<Map<String, Object>> neo4jResult = neo4jClient
-                            .query("MATCH (n:Game {game_id: $mongoId}) RETURN n.name AS name, n.game_id AS id")
+                            .query("MATCH (n:Game {id: $mongoId}) RETURN n.name AS name, n.id AS id")
                             .bind(mongoId).to("mongoId")
                             .fetch()
                             .first();

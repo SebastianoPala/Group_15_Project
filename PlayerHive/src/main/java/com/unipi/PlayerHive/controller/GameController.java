@@ -43,13 +43,13 @@ public class GameController {
 
     //ADMIN
     @PostMapping("/addGame")
-    public ResponseEntity<String> addGame(@Valid @RequestBody GameInfoDTO gameInfo){
-        gameService.addGame(gameInfo);
+    public ResponseEntity<String> addGame(@Valid @RequestBody EditGameDTO newGame){
+        gameService.addGame(newGame);
         return ResponseEntity.ok("The game has been added successfully");
     }
-    @PostMapping("/editGame")
-    public ResponseEntity<String> editGame(@Valid @RequestBody GameInfoDTO gameInfo){
-        gameService.editGame(gameInfo);
+    @PostMapping("/editGame/{gameId}")
+    public ResponseEntity<String> editGame(@PathVariable String gameId,@RequestBody EditGameDTO editGame){
+        gameService.editGame(gameId,editGame);
         return ResponseEntity.ok("The game info has been edited successfully");
     }
     @DeleteMapping("/deleteGame/{gameId}")
