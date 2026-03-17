@@ -9,6 +9,7 @@ import com.unipi.PlayerHive.utility.UserMapper;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -66,17 +67,35 @@ public class UserService {
                 .toList();
     }
 
-    public void sendRequestToUser(String userId) {
+    public void sendRequestToUser(String targetUserId) {
+        String userId ="a1ab4293a9804029882b411f";
+        // is there a way to avoid this query?? check auth maybe, we need the pfp link
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Who is bro -_-"));
+        FriendRequestDTO requestDTO = new FriendRequestDTO(userId,user.getUsername(),user.getPfpURL(), LocalDateTime.now());
+        userRepository.addFriendRequest(targetUserId,userId,requestDTO);
     }
 
-    public void approveRequestFromUser(String userId) {
+    public void approveRequestFromUser(String targetUserId) {
+        String userId ="07b4280e2bec46419547f8e1";
+        //if(!userRepository.existsById(userId)) if the user does not exist, the request will simply not be present
+            // ...
+        int result = userRepository.removeFriendRequest(userId,targetUserId);
+        if(result != 1)
+            throw new RuntimeException("Friend request was not present!");
+        userNeo4jRepository.createFriendship(userId,targetUserId);
+
     }
 
-    public void denyRequestFromUser(String userId) {
+    public void denyRequestFromUser(String targetUserId) {
+        String userId ="07b4280e2bec46419547f8e1";
+        int result = userRepository.removeFriendRequest(userId,targetUserId);
+        if(result != 1)
+            throw new RuntimeException("Friend request was not present!");
     }
 
     public void removeFriend(String friendId) {
-        userNeo4jRepository.removeFriendById("0151851010824e4787ba4734",friendId);
+        String userId ="07b4280e2bec46419547f8e1";
+        userNeo4jRepository.removeFriendById(userId,friendId);
     }
 
 }

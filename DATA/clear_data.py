@@ -49,7 +49,8 @@ def generate_recent_timestamp():
     """Generates an ISO timestamp not older than 1 month"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
-    return fake.date_time_between(start_date=start_date, end_date=end_date).isoformat()
+    # MODIFICA: Rimosso .isoformat() per mantenere l'oggetto datetime puro per PyMongo
+    return fake.date_time_between(start_date=start_date, end_date=end_date)
 
 # --- DATABASE FUNCTIONS ---
 def check_neo4j_connection():
@@ -206,7 +207,8 @@ def main():
                 "username": user['username'],
                 "review_text": random.choice(review_texts),
                 "score": round(random.uniform(0.0, 10.0), 1),
-                "timestamp": generate_random_date().isoformat()
+                # MODIFICA: Rimosso .isoformat() per lasciare l'oggetto datetime puro per PyMongo
+                "timestamp": generate_random_date()
             })
             
         if (i + 1) % 1000 == 0 or (i + 1) == len(users_list):
@@ -357,10 +359,11 @@ def main():
 
     # 7. SAVE JSON FILES
     print(f"\n7. Saving final in-memory data to '{OUTPUT_GAMES}' and '{OUTPUT_USERS}'...")
+    # MODIFICA: Aggiunto default=str in modo che il .json venga salvato regolarmente senza crashare a causa del formato datetime
     with open(OUTPUT_GAMES, 'w', encoding='utf-8') as f:
-        json.dump(games_list, f, indent=4)
+        json.dump(games_list, f, indent=4, default=str)
     with open(OUTPUT_USERS, 'w', encoding='utf-8') as f:
-        json.dump(users_list, f, indent=4)
+        json.dump(users_list, f, indent=4, default=str)
 
     # 8. MONGODB UPLOAD
     upload_to_mongodb(games_list, users_list)

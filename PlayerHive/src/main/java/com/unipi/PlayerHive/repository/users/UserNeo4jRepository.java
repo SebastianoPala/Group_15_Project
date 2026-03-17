@@ -36,4 +36,10 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
     @Query("MATCH (u1:User {id: $userId})-[r:FRIENDS_WITH]-(u2:User {id: $friendId}) " +
             "DELETE r")
     void removeFriendById(String userId, String friendId);
+
+    @Query("MATCH (u1:User {id: $userId1}) " +
+            "MATCH (u2:User {id: $userId2}) " +
+            "MERGE (u1)-[:FRIENDS_WITH]->(u2) " +
+            "MERGE (u2)-[:FRIENDS_WITH]->(u1)")
+    void createFriendship(String userId1, String userId2);
 }

@@ -60,21 +60,21 @@ public class UserController {
         return ResponseEntity.ok(userService.searchUser(query));
     }
 
-    @PostMapping("/sendFriendRequest/{userId}")
-    public ResponseEntity<String> sendFriendRequest(@PathVariable String userId){
-        userService.sendRequestToUser(userId);
+    @PostMapping("/sendFriendRequest/{targetUserId}")
+    public ResponseEntity<String> sendFriendRequest(@PathVariable String targetUserId){
+        userService.sendRequestToUser(targetUserId);
         return ResponseEntity.ok("Friend request sent successfully");
     }
 
-    @PostMapping("/approveFriendRequest/{userId}")
-    public ResponseEntity<String> approveFriendRequest(@PathVariable String userId){
-        userService.approveRequestFromUser(userId);
+    @PostMapping("/approveFriendRequest/{targetUserId}")
+    public ResponseEntity<String> approveFriendRequest(@PathVariable String targetUserId){
+        userService.approveRequestFromUser(targetUserId);
         return ResponseEntity.ok("Friend request has been approved successfully");
     }
 
-    @PostMapping("/denyFriendRequest/{userId}")
-    public ResponseEntity<String> denyFriendRequest(@PathVariable String userId){
-        userService.denyRequestFromUser(userId);
+    @DeleteMapping("/denyFriendRequest/{targetUserId}")
+    public ResponseEntity<String> denyFriendRequest(@PathVariable String targetUserId){
+        userService.denyRequestFromUser(targetUserId);
         return ResponseEntity.ok("Friend request has been denied successfully");
     }
 

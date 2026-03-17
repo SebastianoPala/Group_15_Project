@@ -41,20 +41,4 @@ public class GameController {
     }
 
 
-    //ADMIN
-    @PostMapping("/addGame")
-    public ResponseEntity<String> addGame(@Valid @RequestBody EditGameDTO newGame){
-        gameService.addGame(newGame);
-        return ResponseEntity.ok("The game has been added successfully");
-    }
-    @PostMapping("/editGame/{gameId}")
-    public ResponseEntity<String> editGame(@PathVariable String gameId,@RequestBody EditGameDTO editGame){
-        gameService.editGame(gameId,editGame);
-        return ResponseEntity.ok("The game info has been edited successfully");
-    }
-    @DeleteMapping("/deleteGame/{gameId}")
-    public ResponseEntity<String> deleteGame(@PathVariable String gameId){
-        gameService.deleteGame(gameId);
-        return ResponseEntity.ok("The game has been deleted successfully");
-    }
 }
