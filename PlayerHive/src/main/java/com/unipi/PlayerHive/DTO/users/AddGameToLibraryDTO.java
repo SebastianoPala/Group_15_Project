@@ -10,8 +10,8 @@ import lombok.Setter;
 @Getter
 @Setter
 
-public class FriendDTO {
-    private String id;
-    private String username;
-    private String pfpURL;
+public class AddGameToLibraryDTO {
+    private String gameId;
+    private Integer achievements;
+    private Double hoursPlayed;
 }

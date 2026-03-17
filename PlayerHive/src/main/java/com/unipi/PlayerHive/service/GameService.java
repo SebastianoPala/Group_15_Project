@@ -108,6 +108,8 @@ public class GameService {
     }
 
     public void deleteGame(String gameId) {
+        gameRepository.deleteById(gameId);
+        gameNeo4jRepository.deleteById(gameId);
     }
 
     public void addReview(@Valid addReviewDTO addReviewDTO) {

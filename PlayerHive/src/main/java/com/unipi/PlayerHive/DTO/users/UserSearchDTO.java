@@ -13,11 +13,7 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class UserSearchDTO {
-    public UserSearchDTO(User user){
-        this.username = user.getUsername();
-        this.role = user.getRole();
-        this.pfpURL = user.getPfpURL();
-    }
+
     private String username;
 
     private String role;

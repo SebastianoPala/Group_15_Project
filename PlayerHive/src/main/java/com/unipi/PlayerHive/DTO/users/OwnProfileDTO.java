@@ -13,8 +13,6 @@ import java.time.LocalDate;
 @Setter
 public class OwnProfileDTO {
 
-        //this.friendRequests = user.getFriendRequests().size();
-
 
     private String username;
 

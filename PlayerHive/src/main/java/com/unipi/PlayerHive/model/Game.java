@@ -35,8 +35,10 @@ public class Game {
     private String imageURL;
     private List<String> supportedOS;
     private Integer achievements;
-    private Float userScore;
-    private Float averagePlaytime;
+    private Float sumScore;
+    private Integer countScore;
+    private Float totalPlaytime;
+    private Integer totalPlayers;
     private List<String> developers;
     private List<String> publishers;
     private List<String> genres;

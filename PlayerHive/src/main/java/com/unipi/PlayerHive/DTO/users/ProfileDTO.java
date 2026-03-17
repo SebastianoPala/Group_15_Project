@@ -13,14 +13,7 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class ProfileDTO {
-    public ProfileDTO(User user){
-        this.username = user.getUsername();
-        this.role = user.getRole();
-        this.pfpURL = user.getPfpURL();
-        this.numGames = user.getNumGames();
-        this.hoursPlayed = user.getHoursPlayed();
-        this.friends = user.getFriends();
-    }
+
     private String username;
 
     private String role;

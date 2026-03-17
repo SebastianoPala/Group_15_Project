@@ -70,9 +70,9 @@ def clear_neo4j(session):
 
 def manage_neo4j_indexes(session, action="CREATE"):
     if action == "CREATE":
-        print("   -> Creating indexes on User.user_id and Game.id...")
-        session.run("CREATE INDEX user_id_idx IF NOT EXISTS FOR (u:User) ON (u.user_id)")
-        # FIX 1: L'indice ora viene creato sulla proprietà 'id', non più 'game_id'
+        print("   -> Creating indexes on User.id and Game.id...")
+        # FIX: L'indice ora viene creato sulla proprietà 'id' per User
+        session.run("CREATE INDEX user_id_idx IF NOT EXISTS FOR (u:User) ON (u.id)")
         session.run("CREATE INDEX game_id_idx IF NOT EXISTS FOR (g:Game) ON (g.id)")
         session.run("CALL db.awaitIndexes()")
     elif action == "DROP":
@@ -91,8 +91,6 @@ def upload_to_mongodb(games_data, users_data):
     db.users.drop()
 
     print("   -> Formatting ObjectIds for MongoDB insertion...")
-    # MongoDB requires native ObjectId types, not the JSON {"$oid": "..."} string format
-    # We create a shallow copy to modify the IDs for Mongo insertion
     mongo_games = []
     for g in games_data:
         g_copy = g.copy()
@@ -143,7 +141,6 @@ def main():
         elif isinstance(raw_tags, list): 
             flat_genres = raw_tags
             
-        # Calculate discount: 70% chance of 0, 30% chance of 0-90 in intervals of 5
         if random.random() < 0.70:
             discount = 0
         else:
@@ -216,19 +213,19 @@ def main():
             print(f"   -> Assigned reviews for {i + 1}/{len(users_list)} users...", end='\r')
     print()
             
-    print("   -> Sorting reviews chronologically and calculating userScore...")
+    print("   -> Sorting reviews chronologically and calculating sumScore and countScore...")
     for i, game in enumerate(games_list):
         game["reviews"].sort(key=lambda x: x["timestamp"])
         
-        # Calculate userScore (average of all review scores)
         if game["reviews"]:
-            avg_score = sum(r["score"] for r in game["reviews"]) / len(game["reviews"])
-            game["userScore"] = round(avg_score, 1)
+            game["sumScore"] = round(sum(r["score"] for r in game["reviews"]), 1)
+            game["countScore"] = len(game["reviews"])
         else:
-            game["userScore"] = None
+            game["sumScore"] = 0.0
+            game["countScore"] = 0
             
         if (i + 1) % 1000 == 0 or (i + 1) == len(games_list):
-            print(f"   -> Processed userScore for {i + 1}/{len(games_list)} games...", end='\r')
+            print(f"   -> Processed scores for {i + 1}/{len(games_list)} games...", end='\r')
     print()
 
     # 4. GAME PLAY HISTORY
@@ -249,12 +246,11 @@ def main():
             game_id_str = game["_id"]["$oid"]
             played_relationships.append({
                 "user_id": user["_id"]["$oid"], 
-                "game_id": game_id_str, # Nota: qui lascio 'game_id' come nome nel dict python, ma in Neo4j lo mapperemo su 'id'
+                "game_id": game_id_str, 
                 "hoursPlayed": hours, 
                 "achievements": achievements
             })
             
-            # Track stats for averagePlaytime calculation
             game_playtime_stats[game_id_str]["total_hours"] += hours
             game_playtime_stats[game_id_str]["user_count"] += 1
             
@@ -265,17 +261,18 @@ def main():
             print(f"   -> Generated play history for {i + 1}/{len(users_list)} users...", end='\r')
     print()
 
-    print("   -> Calculating averagePlaytime for games...")
+    print("   -> Calculating totalHoursPlayed and numPlayers for games...")
     for i, game in enumerate(games_list):
         stats = game_playtime_stats[game["_id"]["$oid"]]
         if stats["user_count"] > 0:
-            avg_playtime = stats["total_hours"] / stats["user_count"]
-            game["averagePlaytime"] = round(avg_playtime, 1)
+            game["totalHoursPlayed"] = round(stats["total_hours"], 1)
+            game["numPlayers"] = stats["user_count"]
         else:
-            game["averagePlaytime"] = None
+            game["totalHoursPlayed"] = 0.0
+            game["numPlayers"] = 0
             
         if (i + 1) % 1000 == 0 or (i + 1) == len(games_list):
-            print(f"   -> Processed averagePlaytime for {i + 1}/{len(games_list)} games...", end='\r')
+            print(f"   -> Processed playtime stats for {i + 1}/{len(games_list)} games...", end='\r')
     print()
 
     # 5. SOCIAL GRAPH (FRIENDS)
@@ -302,7 +299,6 @@ def main():
         req_targets = selected_ids[:N]
         friend_targets = selected_ids[N:]
 
-        # Create Friend Requests
         for t_id in req_targets:
             user_map[t_id]["friendRequests"].append({
                 "user_id": u_id, "username": user["username"],
@@ -310,10 +306,8 @@ def main():
             })
             pending_requests.add((u_id, t_id))
 
-        # Create Mutual Friendships
         for t_id in friend_targets:
             established_friendships.add(frozenset([u_id, t_id]))
-            # Increase the 'friends' count for both users in the JSON
             user_map[u_id]["friends"] += 1
             user_map[t_id]["friends"] += 1
 
@@ -325,9 +319,10 @@ def main():
 
     # 6. NEO4J UPLOAD
     print("\n6. Connecting to Neo4j to upload Graph Database...")
-    # FIX 2: Rinominato la chiave da "game_id" a "id" in fase di generazione
     neo4j_games = [{"id": g["_id"]["$oid"], "name": g.get("name",""), "achievements": g.get("achievements",0), "image": g.get("image","")} for g in games_list]
-    neo4j_users = [{"user_id": u["_id"]["$oid"], "username": u["username"], "pfpURL": u["pfpURL"]} for u in users_list]
+    
+    # FIX: Rinominata la chiave da "user_id" a "id" in fase di generazione per Neo4j
+    neo4j_users = [{"id": u["_id"]["$oid"], "username": u["username"], "pfpURL": u["pfpURL"]} for u in users_list]
 
     try:
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -335,22 +330,23 @@ def main():
             clear_neo4j(session)
             
             print("   -> Inserting Game Nodes...")
-            # FIX 3: La query Cypher ora salva "id: game.id" al posto di "game_id: game.game_id"
             session.run("UNWIND $games AS game CREATE (g:Game {id: game.id, name: game.name, achievements: game.achievements, image: game.image})", games=neo4j_games)
             
             print("   -> Inserting User Nodes...")
-            session.run("UNWIND $users AS user CREATE (u:User {user_id: user.user_id, username: user.username, pfpURL: user.pfpURL})", users=neo4j_users)
+            # FIX: La query Cypher ora salva "id: user.id" al posto di "user_id: user.user_id"
+            session.run("UNWIND $users AS user CREATE (u:User {id: user.id, username: user.username, pfpURL: user.pfpURL})", users=neo4j_users)
             
             manage_neo4j_indexes(session, "CREATE")
             
             print(f"   -> Inserting {len(played_relationships)} [:PLAYED] relationships...")
             for i in range(0, len(played_relationships), 10000):
-                # FIX 4: MATCH (g:Game {id: rel.game_id}) - il MATCH cerca il campo id, anche se nel dict python lo abbiamo tenuto come 'game_id'
-                session.run("UNWIND $rels AS rel MATCH (u:User {user_id: rel.user_id}) MATCH (g:Game {id: rel.game_id}) CREATE (u)-[:PLAYED {hoursPlayed: rel.hoursPlayed, achievements: rel.achievements}]->(g)", rels=played_relationships[i:i+10000])
+                # FIX: MATCH cerca il campo 'id' nell'utente (u:User {id: rel.user_id})
+                session.run("UNWIND $rels AS rel MATCH (u:User {id: rel.user_id}) MATCH (g:Game {id: rel.game_id}) CREATE (u)-[:PLAYED {hoursPlayed: rel.hoursPlayed, achievements: rel.achievements}]->(g)", rels=played_relationships[i:i+10000])
 
             print(f"   -> Inserting {len(friend_rels)} mutual [:FRIENDS_WITH] relationship pairs...")
             for i in range(0, len(friend_rels), 5000):
-                session.run("UNWIND $pairs AS pair MATCH (u1:User {user_id: pair.id1}) MATCH (u2:User {user_id: pair.id2}) MERGE (u1)-[:FRIENDS_WITH]->(u2) MERGE (u2)-[:FRIENDS_WITH]->(u1)", pairs=friend_rels[i:i+5000])
+                # FIX: MATCH cerca il campo 'id' nell'utente (u1:User {id: pair.id1})
+                session.run("UNWIND $pairs AS pair MATCH (u1:User {id: pair.id1}) MATCH (u2:User {id: pair.id2}) MERGE (u1)-[:FRIENDS_WITH]->(u2) MERGE (u2)-[:FRIENDS_WITH]->(u1)", pairs=friend_rels[i:i+5000])
 
             manage_neo4j_indexes(session, "DROP")
             

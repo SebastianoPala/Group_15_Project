@@ -1,5 +1,6 @@
 package com.unipi.PlayerHive.controller;
 
+import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.service.UserService;
 import jakarta.validation.Valid;
@@ -25,24 +26,25 @@ public class UserController {
 
     @GetMapping("/MyProfile")
     public ResponseEntity<OwnProfileDTO> showOwnProfile(){
-        return ResponseEntity.ok(userService.getOwnProfileById("fb39502211c742f9a7954e33")); // the user is obtained by the token, TODO
+        return ResponseEntity.ok(userService.getOwnProfileById("efeacf7066b54bc983180329")); // the user is obtained by the token, TODO
     }
 
     @GetMapping("/library/{userId}")
-    public ResponseEntity<LibraryDTO> showUserLibrary(@PathVariable String userId){
+    public ResponseEntity<List<LibraryGameDTO>> showUserLibrary(@PathVariable String userId){
         return ResponseEntity.ok(userService.getLibraryById(userId));
     }
 
-    @PostMapping("/addToLibrary")
-    public ResponseEntity<String> addToLibrary(@Valid @RequestBody AddGameDTO addGameDTO ){
-        userService.addGameToLibrary(addGameDTO);
-        return ResponseEntity.ok("The game has been added to your library successfully");
+    @PostMapping("/editLibrary")
+    public ResponseEntity<String> editLibrary(@Valid @RequestBody AddGameToLibraryDTO addGame){
+        userService.editLibrary(addGame);
+        return ResponseEntity.ok("The library has been updated successfully");
     }
     @DeleteMapping("/removeFromLibrary/{gameId}")
     public ResponseEntity<String> removeFromLibrary(@PathVariable String gameId){
         userService.removeGameFromLibrary(gameId);
-        return ResponseEntity.ok("The game has been removed from your library successfully");
+        return ResponseEntity.ok("The library has been updated successfully");
     }
+
     @GetMapping("/friends/{userId}")
     public ResponseEntity<List<FriendDTO>> showFriendList(@PathVariable String userId){
         return ResponseEntity.ok(userService.getFriendListById(userId));
@@ -76,9 +78,9 @@ public class UserController {
         return ResponseEntity.ok("Friend request has been denied successfully");
     }
 
-    @DeleteMapping("/removeFriend/{userId}")
-    public ResponseEntity<String> removeFriend(@PathVariable String userId){
-        userService.removeFriend(userId);
+    @DeleteMapping("/removeFriend/{friendId}")
+    public ResponseEntity<String> removeFriend(@PathVariable String friendId){
+        userService.removeFriend(friendId);
         return ResponseEntity.ok("Friend removed successfully");
     }
 
