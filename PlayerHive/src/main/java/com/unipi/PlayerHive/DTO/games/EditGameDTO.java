@@ -12,19 +12,15 @@ import java.util.List;
 @Getter
 @Setter
 
-public class GameInfoDTO {
-
+public class EditGameDTO {
     private String name;
     private String releaseDate;
     private Double price;
     private Integer discount;
     private String description;
-    private List<ReviewDTO> reviews;
     private String imageURL;
     private List<String> supportedOS;
     private Integer achievements;
-    private Float userScore;
-    private Float averagePlaytime;
     private List<String> developers;
     private List<String> publishers;
     private List<String> genres;

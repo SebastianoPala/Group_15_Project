@@ -9,3 +9,29 @@ GAMES AND USER SEARCH:
     >GameSearchDTO
         - if i return the game id, is that a security issue / good practice?
         - maybe sort them by user score? do we need to return user score in the general search?
+
+    >EditGameDTO
+        - add the possibility to leave empty fields?
+USERS
+    -paginate friend requests?
+    -paginate friends? or is it done by neo4j automatically
+    -in the profile DTO, do we need the friend request number if a user requests another user's profile????
+    -friend requests should be queried through the token's username
+    -add achievement numbers checks
+
+GAMES
+    -manage average hours played with insertions
+    -manage average scores with insertions
+
+ADMINS
+    -add a batch review delete command?
+    -add supportedOS controls?
+
+GENERAL
+    -add all controls to inserts and edits
+    - add transactions
+IDEAS
+    -return the most popular games per age range?
+
+AI SECTION
+    -writing boilerplate

@@ -1,5 +1,6 @@
 package com.unipi.PlayerHive.model;
 
+import com.unipi.PlayerHive.DTO.users.FriendRequestDTO;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Past;
 import lombok.AllArgsConstructor;
@@ -43,7 +44,7 @@ public class User {
 
     private Integer friends;
 
-    private List<FriendRequest> friendRequests;
+    private List<FriendRequestDTO> friendRequests;
 
 
 }

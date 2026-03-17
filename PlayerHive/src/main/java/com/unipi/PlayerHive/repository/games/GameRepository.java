@@ -13,4 +13,6 @@ public interface GameRepository extends MongoRepository<Game, String> {
 
     @Query("{ 'name': { $regex: ?0, $options: 'i' } }")
     Optional<List<Game>> searchByName(String gameName);
+
+    boolean existsByName(String name);
 }

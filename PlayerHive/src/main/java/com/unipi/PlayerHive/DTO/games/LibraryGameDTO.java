@@ -1,23 +1,25 @@
 package com.unipi.PlayerHive.DTO.games;
 
-import com.unipi.PlayerHive.model.Game;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
+import org.springframework.data.annotation.Id;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 
-public class GameSearchDTO {
+public class LibraryGameDTO {
 
+    @Id
     private String id;
     private String name;
-    private Double price;
-    private Integer discount;
-    private String imageURL;
+    private Integer achievements;
+    private String image;
+
+    // played by
+    private Integer achievementsObtained;
+    private Double hoursPlayed;
 }
