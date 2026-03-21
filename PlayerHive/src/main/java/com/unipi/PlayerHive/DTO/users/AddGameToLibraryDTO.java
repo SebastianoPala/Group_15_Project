@@ -1,5 +1,7 @@
 package com.unipi.PlayerHive.DTO.users;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +13,14 @@ import lombok.Setter;
 @Setter
 
 public class AddGameToLibraryDTO {
+    @NotNull
     private String gameId;
+
+    @NotNull
+    @PositiveOrZero
     private Integer achievements;
-    private Double hoursPlayed;
+
+    @NotNull
+    @PositiveOrZero
+    private Float hoursPlayed;
 }

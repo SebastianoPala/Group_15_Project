@@ -74,7 +74,7 @@ public class UserController {
 
     @DeleteMapping("/denyFriendRequest/{targetUserId}")
     public ResponseEntity<String> denyFriendRequest(@PathVariable String targetUserId){
-        userService.denyRequestFromUser(targetUserId);
+        userService.removeRequestFromUser(targetUserId);
         return ResponseEntity.ok("Friend request has been denied successfully");
     }
 

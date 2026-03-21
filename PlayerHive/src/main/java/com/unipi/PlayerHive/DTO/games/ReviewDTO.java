@@ -19,7 +19,6 @@ public class ReviewDTO {
     private String username;
     private String review_text;
 
-    @NotNull
     private Float score;
 
     private LocalDateTime timestamp;

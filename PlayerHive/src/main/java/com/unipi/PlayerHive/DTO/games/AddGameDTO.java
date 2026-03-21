@@ -16,7 +16,7 @@ import java.util.List;
 @Getter
 @Setter
 
-public class EditGameDTO {
+public class AddGameDTO {
 
     @NotNull
     private String name;

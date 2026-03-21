@@ -9,6 +9,7 @@ import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
@@ -17,6 +18,10 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
             "RETURN g.id AS id, g.name AS name, g.image AS image, g.achievements as achievements, " +
             "r.hoursPlayed AS hoursPlayed, r.achievements AS achievementsObtained")
     List<LibraryGameDTO> findLibraryById(String userId);
+
+    @Query("MATCH (u:User {id: $userId})-[r:PLAYED]->(g:Game {id: $gameId}) " +
+            "RETURN r.hoursPlayed")
+    Optional<Double> findUserGamePlaytime(String userId, String gameId);
 
     @Query("MATCH (u:User {id: $userId}) " +
             "MATCH (g:Game {id: $gameId}) " +

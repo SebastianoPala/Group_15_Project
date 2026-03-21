@@ -1,6 +1,7 @@
 package com.unipi.PlayerHive.controller;
 
 
+import com.unipi.PlayerHive.DTO.games.AddGameDTO;
 import com.unipi.PlayerHive.DTO.games.EditGameDTO;
 import com.unipi.PlayerHive.service.AdminService;
 import jakarta.validation.Valid;
@@ -17,11 +18,11 @@ public class AdminController {
     }
 
     @PostMapping("/addGame")
-    public ResponseEntity<String> addGame(@Valid @RequestBody EditGameDTO newGame){
+    public ResponseEntity<String> addGame(@Valid @RequestBody AddGameDTO newGame){
         adminService.addGame(newGame);
         return ResponseEntity.ok("The game has been added successfully");
     }
-    @PostMapping("/editGame/{gameId}")
+    @PatchMapping("/editGame/{gameId}")
     public ResponseEntity<String> editGame(@PathVariable String gameId, @RequestBody EditGameDTO editGame){
         adminService.editGame(gameId,editGame);
         return ResponseEntity.ok("The game info has been edited successfully");

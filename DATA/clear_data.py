@@ -52,6 +52,26 @@ def generate_recent_timestamp():
     # MODIFICA: Rimosso .isoformat() per mantenere l'oggetto datetime puro per PyMongo
     return fake.date_time_between(start_date=start_date, end_date=end_date)
 
+def format_to_localdate(date_raw):
+    """Parses various date formats and converts them to YYYY-MM-DD for Java LocalDate."""
+    if not date_raw:
+        return None
+    date_str = str(date_raw).strip()
+    # Common formats found in game datasets
+    formats = [
+        "%Y-%m-%d", "%b %d, %Y", "%d %b, %Y", "%B %d, %Y", "%d %B, %Y", 
+        "%Y/%m/%d", "%m/%d/%Y", "%d/%m/%Y"
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    # If it's just a year
+    if len(date_str) == 4 and date_str.isdigit():
+        return f"{date_str}-01-01"
+    return date_str # Fallback se la data è già in un formato non riconosciuto
+
 # --- DATABASE FUNCTIONS ---
 def check_neo4j_connection():
     """Verifies Neo4j credentials before starting the heavy processing."""
@@ -150,7 +170,7 @@ def main():
         games_list.append({
             "_id": {"$oid": generate_oid()},
             "name": game_data.get("name", ""),
-            "release_date": game_data.get("release_date"),
+            "release_date": format_to_localdate(game_data.get("release_date")),
             "price": game_data.get("price"),
             "discount": discount,
             "description": game_data.get("detailed_description"),

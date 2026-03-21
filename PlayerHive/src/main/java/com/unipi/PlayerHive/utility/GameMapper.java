@@ -1,6 +1,6 @@
 package com.unipi.PlayerHive.utility;
 
-import com.unipi.PlayerHive.DTO.games.EditGameDTO;
+import com.unipi.PlayerHive.DTO.games.AddGameDTO;
 import com.unipi.PlayerHive.DTO.games.GameInfoDTO;
 import com.unipi.PlayerHive.DTO.games.GameSearchDTO;
 import com.unipi.PlayerHive.model.Game;
@@ -13,6 +13,6 @@ public interface GameMapper {
 
     GameSearchDTO gameToGameSearchDTO(Game game);
 
-    Game editGameDTOtoGame(EditGameDTO editGameDTO);
+    Game editGameDTOtoGame(AddGameDTO addGameDTO);
 
 }

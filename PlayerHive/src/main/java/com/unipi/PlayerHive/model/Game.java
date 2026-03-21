@@ -26,7 +26,7 @@ public class Game {
 
     private String name;
     @Field("release_date")
-    private String releaseDate;
+    private LocalDate releaseDate;
     private Double price;
     private Integer discount;
     private String description;
@@ -37,8 +37,8 @@ public class Game {
     private Integer achievements;
     private Float sumScore;
     private Integer countScore;
-    private Float totalPlaytime;
-    private Integer totalPlayers;
+    private Float totalHoursPlayed;
+    private Integer numPlayers;
     private List<String> developers;
     private List<String> publishers;
     private List<String> genres;

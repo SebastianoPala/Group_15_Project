@@ -25,7 +25,7 @@ GAMES
 
 ADMINS
     -add a batch review delete command?
-    -add supportedOS controls?
+    -fix user libraries after deleting a game
 
 GENERAL
     -add all controls to inserts and edits

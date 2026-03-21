@@ -36,7 +36,7 @@ def generate_oid():
     return uuid.uuid4().hex[:24]
 
 def generate_random_date():
-    """Generates a random timestamp between Jan 1, 2023 and today"""
+    """Generates a random datetime object between Jan 1, 2023 and today"""
     start_date = datetime(2023, 1, 1)
     end_date = datetime.now()
     delta = end_date - start_date
@@ -44,10 +44,30 @@ def generate_random_date():
     return start_date + timedelta(seconds=random_seconds)
 
 def generate_recent_timestamp():
-    """Generates an ISO timestamp not older than 1 month"""
+    """Generates a datetime object not older than 1 month"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
-    return fake.date_time_between(start_date=start_date, end_date=end_date).isoformat()
+    return fake.date_time_between(start_date=start_date, end_date=end_date)
+
+def format_to_datetime(date_raw):
+    """Parses various date formats and converts them to a Python datetime object (at midnight)."""
+    if not date_raw:
+        return None
+    date_str = str(date_raw).strip()
+    # Common formats found in game datasets
+    formats = [
+        "%Y-%m-%d", "%b %d, %Y", "%d %b, %Y", "%B %d, %Y", "%d %B, %Y", 
+        "%Y/%m/%d", "%m/%d/%Y", "%d/%m/%Y"
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    # If it's just a year
+    if len(date_str) == 4 and date_str.isdigit():
+        return datetime(int(date_str), 1, 1)
+    return None # Ritorna None se non riesce a fare il parsing, evitando di salvare stringhe errate
 
 # --- DATABASE FUNCTIONS ---
 def check_neo4j_connection():
@@ -69,7 +89,6 @@ def clear_neo4j(session):
 def manage_neo4j_indexes(session, action="CREATE"):
     if action == "CREATE":
         print("   -> Creating indexes on User.id and Game.id...")
-        # FIX: L'indice ora viene creato sulla proprietà 'id' per User
         session.run("CREATE INDEX user_id_idx IF NOT EXISTS FOR (u:User) ON (u.id)")
         session.run("CREATE INDEX game_id_idx IF NOT EXISTS FOR (g:Game) ON (g.id)")
         session.run("CALL db.awaitIndexes()")
@@ -147,14 +166,14 @@ def main():
         games_list.append({
             "_id": {"$oid": generate_oid()},
             "name": game_data.get("name", ""),
-            "release_date": game_data.get("release_date"),
-            "price": game_data.get("price"),
-            "discount": discount,
+            "release_date": format_to_datetime(game_data.get("release_date")),
+            "price": float(game_data.get("price", 0.0) if game_data.get("price") is not None else 0.0), # Assicura float
+            "discount": int(discount), # Assicura int
             "description": game_data.get("detailed_description"),
             "reviews": [],
             "image": game_data.get("header_image"),
             "supportedOS": supported_os,
-            "achievements": game_data.get("achievements", 0),
+            "achievements": int(game_data.get("achievements", 0)), # Assicura int
             "developers": game_data.get("developers", []),
             "publishers": game_data.get("publishers", []),
             "genres": flat_genres
@@ -166,17 +185,21 @@ def main():
     users_list = []
     for i in range(NUM_USERS):
         username = fake.unique.user_name()
+        # Convert date to datetime object at midnight
+        birthdate_raw = fake.date_of_birth(minimum_age=15)
+        birthdate_dt = datetime(birthdate_raw.year, birthdate_raw.month, birthdate_raw.day)
+        
         users_list.append({
             "_id": {"$oid": generate_oid()},
             "username": username,
             "password": hashlib.sha256(username.encode('utf-8')).hexdigest(),
             "email": fake.unique.email(),
-            "birthdate": fake.date_of_birth(minimum_age=15).isoformat(),
+            "birthdate": birthdate_dt, 
             "role": "USER",
             "friendRequests": [],
             "friends": 0,
             "numGames": 0,
-            "hoursPlayed": 0,
+            "hoursPlayed": 0.0,
             "pfpURL": f"/Playerhive/pfp/{uuid.uuid4().hex}"
         })
         if (i + 1) % 1000 == 0 or (i + 1) == NUM_USERS:
@@ -203,8 +226,8 @@ def main():
                 "user_id": user['_id']['$oid'],
                 "username": user['username'],
                 "review_text": random.choice(review_texts),
-                "score": round(random.uniform(0.0, 10.0), 1),
-                "timestamp": generate_random_date().isoformat()
+                "score": float(round(random.uniform(0.0, 10.0), 1)), # Assicura float
+                "timestamp": generate_random_date() 
             })
             
         if (i + 1) % 1000 == 0 or (i + 1) == len(users_list):
@@ -216,8 +239,8 @@ def main():
         game["reviews"].sort(key=lambda x: x["timestamp"])
         
         if game["reviews"]:
-            game["sumScore"] = round(sum(r["score"] for r in game["reviews"]), 1)
-            game["countScore"] = len(game["reviews"])
+            game["sumScore"] = float(round(sum(r["score"] for r in game["reviews"]), 1))
+            game["countScore"] = int(len(game["reviews"]))
         else:
             game["sumScore"] = 0.0
             game["countScore"] = 0
@@ -237,9 +260,9 @@ def main():
         total_hours = 0.0
         
         for game in selected_games:
-            hours = round(random.uniform(0.1, 500.0), 1)
+            hours = float(round(random.uniform(0.1, 500.0), 1))
             total_hours += hours
-            achievements = random.randint(0, game.get("achievements", 0))
+            achievements = int(random.randint(0, game.get("achievements", 0)))
             
             game_id_str = game["_id"]["$oid"]
             played_relationships.append({
@@ -252,8 +275,8 @@ def main():
             game_playtime_stats[game_id_str]["total_hours"] += hours
             game_playtime_stats[game_id_str]["user_count"] += 1
             
-        user["numGames"] = M
-        user["hoursPlayed"] = round(total_hours, 1)
+        user["numGames"] = int(M)
+        user["hoursPlayed"] = float(round(total_hours, 1))
         
         if (i + 1) % 1000 == 0 or (i + 1) == len(users_list):
             print(f"   -> Generated play history for {i + 1}/{len(users_list)} users...", end='\r')
@@ -263,8 +286,8 @@ def main():
     for i, game in enumerate(games_list):
         stats = game_playtime_stats[game["_id"]["$oid"]]
         if stats["user_count"] > 0:
-            game["totalHoursPlayed"] = round(stats["total_hours"], 1)
-            game["numPlayers"] = stats["user_count"]
+            game["totalHoursPlayed"] = float(round(stats["total_hours"], 1))
+            game["numPlayers"] = int(stats["user_count"])
         else:
             game["totalHoursPlayed"] = 0.0
             game["numPlayers"] = 0
@@ -319,7 +342,6 @@ def main():
     print("\n6. Connecting to Neo4j to upload Graph Database...")
     neo4j_games = [{"id": g["_id"]["$oid"], "name": g.get("name",""), "achievements": g.get("achievements",0), "image": g.get("image","")} for g in games_list]
     
-    # FIX: Rinominata la chiave da "user_id" a "id" in fase di generazione per Neo4j
     neo4j_users = [{"id": u["_id"]["$oid"], "username": u["username"], "pfpURL": u["pfpURL"]} for u in users_list]
 
     try:
@@ -331,19 +353,16 @@ def main():
             session.run("UNWIND $games AS game CREATE (g:Game {id: game.id, name: game.name, achievements: game.achievements, image: game.image})", games=neo4j_games)
             
             print("   -> Inserting User Nodes...")
-            # FIX: La query Cypher ora salva "id: user.id" al posto di "user_id: user.user_id"
             session.run("UNWIND $users AS user CREATE (u:User {id: user.id, username: user.username, pfpURL: user.pfpURL})", users=neo4j_users)
             
             manage_neo4j_indexes(session, "CREATE")
             
             print(f"   -> Inserting {len(played_relationships)} [:PLAYED] relationships...")
             for i in range(0, len(played_relationships), 10000):
-                # FIX: MATCH cerca il campo 'id' nell'utente (u:User {id: rel.user_id})
                 session.run("UNWIND $rels AS rel MATCH (u:User {id: rel.user_id}) MATCH (g:Game {id: rel.game_id}) CREATE (u)-[:PLAYED {hoursPlayed: rel.hoursPlayed, achievements: rel.achievements}]->(g)", rels=played_relationships[i:i+10000])
 
             print(f"   -> Inserting {len(friend_rels)} mutual [:FRIENDS_WITH] relationship pairs...")
             for i in range(0, len(friend_rels), 5000):
-                # FIX: MATCH cerca il campo 'id' nell'utente (u1:User {id: pair.id1})
                 session.run("UNWIND $pairs AS pair MATCH (u1:User {id: pair.id1}) MATCH (u2:User {id: pair.id2}) MERGE (u1)-[:FRIENDS_WITH]->(u2) MERGE (u2)-[:FRIENDS_WITH]->(u1)", pairs=friend_rels[i:i+5000])
 
             manage_neo4j_indexes(session, "DROP")
@@ -353,7 +372,7 @@ def main():
     except Exception as e:
         print(f"   -> ERROR during Neo4j operations: {e}")
 
-    # 7. MONGODB UPLOAD (Era l'8, ora è il 7)
+    # 7. MONGODB UPLOAD
     upload_to_mongodb(games_list, users_list)
 
     print("\n=== PIPELINE FINISHED SUCCESSFULLY! ===")
