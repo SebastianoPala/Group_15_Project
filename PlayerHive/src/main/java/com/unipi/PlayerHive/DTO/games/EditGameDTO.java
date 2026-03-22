@@ -1,5 +1,6 @@
 package com.unipi.PlayerHive.DTO.games;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.List;
 
 public class EditGameDTO {
 
+    @NotBlank
     private String name;
 
     @PastOrPresent
@@ -30,6 +32,7 @@ public class EditGameDTO {
 
     private String description;
 
+    @NotBlank
     private String imageURL;
 
     private List<String> supportedOS;

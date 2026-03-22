@@ -36,8 +36,9 @@ public class AdminService {
 
         Game game = gameMapper.editGameDTOtoGame(newGame);
 
-        game.setReviews(new ArrayList<>()); // new games obviously have no reviews
-        game.setTotalHoursPlayed((float) 0);
+        game.setAllReviews(new ArrayList<>()); // new games obviously have no reviews
+        game.setRecentReviews(new ArrayList<>());
+        game.setTotalHoursPlayed((float) 0); // can this be added in the entity?
         game.setNumPlayers(0);
         game.setSumScore((float) 0);
         game.setCountScore(0);
@@ -107,7 +108,7 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteGame(String gameId) { // fix all user libraries
+    public void deleteGame(String gameId) { // fix all user libraries <TODO>
         gameRepository.deleteById(gameId);
         gameNeo4jRepository.deleteById(gameId);
     }

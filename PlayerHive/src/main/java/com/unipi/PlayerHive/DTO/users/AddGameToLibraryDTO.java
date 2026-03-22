@@ -1,5 +1,6 @@
 package com.unipi.PlayerHive.DTO.users;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
@@ -14,6 +15,7 @@ import lombok.Setter;
 
 public class AddGameToLibraryDTO {
     @NotNull
+    @NotBlank
     private String gameId;
 
     @NotNull

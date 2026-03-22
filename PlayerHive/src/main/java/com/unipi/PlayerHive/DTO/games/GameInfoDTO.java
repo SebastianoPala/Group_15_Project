@@ -20,7 +20,9 @@ public class GameInfoDTO {
     private Double price;
     private Integer discount;
     private String description;
-    private List<ReviewDTO> reviews;
+
+    private List<RecentReviewDTO> recentReviews;
+
     private String imageURL;
     private List<String> supportedOS;
     private Integer achievements;

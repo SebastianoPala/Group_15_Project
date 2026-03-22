@@ -3,6 +3,10 @@ package com.unipi.PlayerHive.controller;
 import com.unipi.PlayerHive.DTO.games.*;
 import com.unipi.PlayerHive.service.GameService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,19 +28,28 @@ public class GameController {
     }
 
     @GetMapping("/search/{gameName}")
-    public ResponseEntity<List<GameSearchDTO>> searchByName(@PathVariable String gameName){
-        return ResponseEntity.ok(gameService.searchGameByName(gameName));
+    public ResponseEntity<Slice<GameSearchDTO>> searchByName(@PathVariable String gameName,
+                                                             @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                             @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size){
+        return ResponseEntity.ok(gameService.searchGameByName(gameName,page,size));
     }
-
-    @PostMapping("/addReview")
-    public ResponseEntity<String> addReview(@Valid @RequestBody addReviewDTO addReviewDTO){
-        gameService.addReview(addReviewDTO);
+    /*
+    @GetMapping("showReviews/{gameId}")
+    public ResponseEntity<?> showGameReviews(@PathVariable String gameId,
+                                            @RequestParam(defaultValue = "0") @Min(0) int page,
+                                            @RequestParam(defaultValue = "50") @Min(25) @Max(100) int size){
+        return ResponseEntity.ok(gameService.getGameReviews(gameId,page,size); FIX RETURN
+    }
+    */
+    @PostMapping("/addReview/{gameId}")
+    public ResponseEntity<String> addReview(@PathVariable String gameId,@Valid @RequestBody addReviewDTO addReviewDTO){
+        gameService.addReview(gameId, addReviewDTO);
         return ResponseEntity.ok("Review added successfully");
     }
 
-    @DeleteMapping("/deleteReview/{gameId}")
-    public ResponseEntity<String> deleteReview(@PathVariable String gameId){
-        gameService.deleteReviewFromGame(gameId);
+    @DeleteMapping("/deleteReview/{reviewId}")
+    public ResponseEntity<String> deleteReview(@PathVariable String reviewId){
+        gameService.deleteReviewFromGame(reviewId);
         return ResponseEntity.ok("Review deleted successfully");
     }
 

@@ -1,60 +1,44 @@
 package com.unipi.PlayerHive.DTO.games;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDate;
 import java.util.List;
 
-@NoArgsConstructor
-@AllArgsConstructor
+
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 
-public class AddGameDTO {
+public class LightGameDTO {
+    @Id
+    private String id;
 
-    @NotNull
-    @NotBlank
     private String name;
-
-    @NotNull
-    @PastOrPresent
+    @Field("release_date")
     private LocalDate releaseDate;
-
-    @NotNull
-    @PositiveOrZero
     private Double price;
-
-    @NotNull
-    @PositiveOrZero
     private Integer discount;
-
-    @NotNull
     private String description;
 
-    @NotNull
-    @NotBlank
+    private List<RecentReviewDTO> recentReviews;
+
+    @Field("image")
     private String imageURL;
-
-    @NotNull
     private List<String> supportedOS;
-
-    @NotNull
-    @PositiveOrZero
     private Integer achievements;
-
-    @NotNull
+    private Float sumScore;
+    private Integer countScore;
+    private Float totalHoursPlayed;
+    private Integer numPlayers;
     private List<String> developers;
-
-    @NotNull
     private List<String> publishers;
-
-    @NotNull
     private List<String> genres;
+
 }

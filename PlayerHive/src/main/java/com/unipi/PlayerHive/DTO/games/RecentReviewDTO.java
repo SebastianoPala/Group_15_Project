@@ -1,10 +1,11 @@
 package com.unipi.PlayerHive.DTO.games;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
@@ -14,10 +15,18 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class ReviewDTO {
-    private String user_id;
+public class RecentReviewDTO {
+
+    @Id
+    private String id;
+
+    @Field("user_id")
+    private String userId;
     private String username;
-    private String review_text;
+    private String pfpURL;
+
+    @Field("review_text")
+    private String reviewText;
 
     private Float score;
 

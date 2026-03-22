@@ -1,8 +1,8 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
+import com.unipi.PlayerHive.DTO.games.LightGameDTO;
 import com.unipi.PlayerHive.DTO.users.*;
-import com.unipi.PlayerHive.model.Game;
 import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
@@ -10,6 +10,10 @@ import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.utility.UserMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,6 +39,7 @@ public class UserService {
         User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
         return userMapper.userToProfileDTO(user);
     }
+
     public OwnProfileDTO getOwnProfileById(String userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
 
@@ -45,67 +50,65 @@ public class UserService {
         return ownProfile;
     }
 
-    public List<LibraryGameDTO> getLibraryById(String userId) {
-        return userNeo4jRepository.findLibraryById(userId);
+    public Page<LibraryGameDTO> getLibraryById(String userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page,size);
+        return userNeo4jRepository.findLibraryById(userId, pageable);
     }
 
     @Transactional
     public void editLibrary(@Valid AddGameToLibraryDTO addGame) {
         String userId = "08c5af2f8ce54ffea778ad15"; //will be obtained by token
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("The user you are trying to access does not exist"));
         // TODO
-        // FIX
 
-        Game game = gameRepository.findById(addGame.getGameId()).orElseThrow(() -> new NoSuchElementException("The game specified does not exist"));
-        if(addGame.getAchievements() > game.getAchievements()){
-            throw new IllegalArgumentException("The achievement number exceeds the game's achievement number"); // ADD TO EXCEPTION MANAGER
-        }
-        Optional<Double> userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, game.getId());
+        Optional<Double> userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, addGame.getGameId());
 
-        float totalPlaytime = game.getTotalHoursPlayed() + addGame.getHoursPlayed();
-        float userPlaytime = user.getHoursPlayed() + addGame.getHoursPlayed();
+        //float totalPlaytime = game.getTotalHoursPlayed() + addGame.getHoursPlayed(); TODO DELAY UPDATE
+        float userPlaytime = addGame.getHoursPlayed();
+        int gameNumberToAdd = 0;
 
         // DO I just assume mongodb and neo4j data are synchronized?
         if(userGamePlaytime.isEmpty()){
-            game.setNumPlayers(game.getNumPlayers() + 1 );
-            user.setNumGames(user.getNumGames() + 1);
+           // game.setNumPlayers(game.getNumPlayers() + 1 ); TODO DELAY UPDATE
+            gameNumberToAdd++;
         }else{
-           totalPlaytime -= userGamePlaytime.get().floatValue();
+           //totalPlaytime -= userGamePlaytime.get().floatValue();
            userPlaytime -= userGamePlaytime.get().floatValue();
         }
-        game.setTotalHoursPlayed(totalPlaytime);
-        user.setHoursPlayed(userPlaytime);
+        boolean success = userNeo4jRepository.saveGameInLibrary(userId,addGame.getGameId(),addGame.getHoursPlayed().doubleValue(),addGame.getAchievements());
+        if(!success){
+            throw new IllegalArgumentException("The achievement number exceeds the game's achievement number"); // ADD TO EXCEPTION MANAGER
+        }
+        //game.setTotalHoursPlayed(totalPlaytime);
+        int modified = userRepository.updateUserStats(userId, userPlaytime,gameNumberToAdd);
+        if(modified<=0)
+            throw new RuntimeException("The server was unable to complete the operation");
+        //gameRepository.save(game);!! TODO delay update
 
-        gameRepository.save(game);
-        userRepository.save(user);
-        userNeo4jRepository.saveGameInLibrary(userId,addGame.getGameId(),addGame.getHoursPlayed().doubleValue(),addGame.getAchievements());
     }
 
     @Transactional
     public void removeGameFromLibrary(String gameId) {
-        String userId = "08c5af2f8ce54ffea778ad15"; //will be obtained by token
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("The user you are trying to access does not exist"));
-        // TODO
-        // FIX
+        String userId = "9bb8c64ffd2449af9efc47ed"; //will be obtained by token
 
-        Game game = gameRepository.findById(gameId).orElseThrow(() -> new NoSuchElementException("The game specified does not exist"));
-
-        Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, game.getId())
+        Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, gameId)
                 .orElseThrow(() -> new NoSuchElementException("The game specified is not present in the user's library"));
 
         // DO I just assume mongodb and neo4j data are synchronized?
-        game.setNumPlayers(game.getNumPlayers() -1 );
-        user.setNumGames(user.getNumGames() - 1);
+        //game.setNumPlayers(game.getNumPlayers() -1 ); // TODO REMOVE
 
-        game.setTotalHoursPlayed(game.getTotalHoursPlayed() - userGamePlaytime.floatValue());
-        user.setHoursPlayed(user.getHoursPlayed() - userGamePlaytime.floatValue());
-        gameRepository.save(game);
-        userRepository.save(user);
-        userNeo4jRepository.removeGameFromLibrary(userId,gameId);
+        //game.setTotalHoursPlayed(game.getTotalHoursPlayed() - userGamePlaytime.floatValue()); // TODO REMOVE
+        int modified = userRepository.updateUserStats(userId, -userGamePlaytime.floatValue(),-1);
+        if(modified<=0)
+            throw new RuntimeException("The server was unable to complete the operation");
+
+        boolean success = userNeo4jRepository.removeGameFromLibrary(userId,gameId);
+        if(!success)
+            throw new RuntimeException("The server was unable to complete the operation");
     }
 
-    public List<FriendDTO> getFriendListById(String userId) {
-        return userNeo4jRepository.findUsersFriends(userId);
+    public Page<FriendDTO> getFriendListById(String userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page,size);
+        return userNeo4jRepository.findUsersFriends(userId, pageable);
     }
 
     public List<FriendRequestDTO> getFriendRequestsById(String userId) { // THE STRING MUST BE OBTAINED BY THE TOKEN TODO
@@ -113,31 +116,53 @@ public class UserService {
         return user.getFriendRequests();
     }
 
-    public List<UserSearchDTO> searchUser(String username) {
-        List<User> searchResult = userRepository.searchByUsername(username).orElseThrow(() -> new NoSuchElementException("User not found"));
+    public Slice<UserSearchDTO> searchUser(String username, int page, int size) {
+        Pageable pageable = PageRequest.of(page,size);
 
-        return searchResult.stream()
-                .map(userMapper::userToUserSearchDTO)
-                .toList();
+        Slice<UserSearchDTO> searchResult = userRepository.searchByUsernameContaining(username, pageable);
+
+        if(searchResult.isEmpty()) // do we have to throw the exception?
+            throw new NoSuchElementException("No user matches the search parameters");
+
+        return searchResult;
     }
+
 
     public void sendRequestToUser(String targetUserId) {
-        String userId ="a1ab4293a9804029882b411f";
+        String userId ="424038da54b149e296df20b3";
         // is there a way to avoid this query?? check auth maybe, we need the pfp link
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("Who is bro -_-"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("Who is bro -_-")); // TODO, ADD QUERY ONLY FOR PFP
+
         FriendRequestDTO requestDTO = new FriendRequestDTO(userId,user.getUsername(),user.getPfpURL(), LocalDateTime.now());
-        userRepository.addFriendRequest(targetUserId,userId,requestDTO);
+
+        int modified = userRepository.addFriendRequest(targetUserId,userId,requestDTO); // add controls to return value
+        if(modified != 1)
+            throw new RuntimeException("The server was unable to complete the operation");
     }
 
+    @Transactional
     public void approveRequestFromUser(String targetUserId) {
-        this.removeRequestFromUser(targetUserId);
-        String userId ="07b4280e2bec46419547f8e1";
-        userNeo4jRepository.createFriendship(userId,targetUserId);
+        String userId ="a669e87a731043d49e38ba1d";
+
+        int result = userRepository.acceptFriendRequest(userId,targetUserId);
+        System.out.println(result);
+        if(result != 1)
+            throw new NoSuchElementException("Friend request was not present!");
+
+        result = userRepository.editFriendCounter(targetUserId, 1);
+        System.out.println(result);
+        if(result != 1)
+            throw new RuntimeException("Server Error");
+
+        boolean success = userNeo4jRepository.createFriendship(userId,targetUserId);
+        System.out.println(success);
+        if(!success)
+            throw new RuntimeException("The server was unable to complete the operation");
 
     }
 
     public void removeRequestFromUser(String targetUserId) {
-        String userId ="07b4280e2bec46419547f8e1";
+        String userId ="0b593fcce767488da8293709";
         //if(!userRepository.existsById(userId)) if the user does not exist, the request will simply not be present
         // ...
         int result = userRepository.removeFriendRequest(userId,targetUserId);
@@ -145,9 +170,18 @@ public class UserService {
             throw new NoSuchElementException("Friend request was not present!");
     }
 
+    @Transactional
     public void removeFriend(String friendId) {
-        String userId ="07b4280e2bec46419547f8e1";
-        userNeo4jRepository.removeFriendById(userId,friendId);
+        String userId ="424038da54b149e296df20b3";
+
+        boolean success = userNeo4jRepository.removeFriendById(userId,friendId);
+        if(!success){
+            throw new NoSuchElementException("No Friend was found matching the given Id");
+        }
+
+        int result = userRepository.editFriendCounter(userId, -1);
+        if(result != 1)
+            throw new RuntimeException("The server was unable to complete the operation");
     }
 
 }

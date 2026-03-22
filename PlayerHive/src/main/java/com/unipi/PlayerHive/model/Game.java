@@ -1,7 +1,6 @@
 package com.unipi.PlayerHive.model;
 
-import com.unipi.PlayerHive.DTO.games.ReviewDTO;
-import jakarta.validation.constraints.Past;
+import com.unipi.PlayerHive.DTO.games.RecentReviewDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,7 +29,10 @@ public class Game {
     private Double price;
     private Integer discount;
     private String description;
-    private List<ReviewDTO> reviews; //maybe limit the reviews to the M most recent?
+
+    private List<RecentReviewDTO> recentReviews;
+    private List<String> allReviews;
+
     @Field("image")
     private String imageURL;
     private List<String> supportedOS;

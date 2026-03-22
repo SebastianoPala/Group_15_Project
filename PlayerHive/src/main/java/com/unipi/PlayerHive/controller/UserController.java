@@ -4,6 +4,10 @@ import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,8 +34,10 @@ public class UserController {
     }
 
     @GetMapping("/library/{userId}")
-    public ResponseEntity<List<LibraryGameDTO>> showUserLibrary(@PathVariable String userId){
-        return ResponseEntity.ok(userService.getLibraryById(userId));
+    public ResponseEntity<Page<LibraryGameDTO>> showUserLibrary(@PathVariable String userId,
+                                                                 @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                                 @RequestParam(defaultValue = "25") @Min(1) @Max(50) int size){
+        return ResponseEntity.ok(userService.getLibraryById(userId, page, size));
     }
 
     @PostMapping("/editLibrary")
@@ -46,8 +52,10 @@ public class UserController {
     }
 
     @GetMapping("/friends/{userId}")
-    public ResponseEntity<List<FriendDTO>> showFriendList(@PathVariable String userId){
-        return ResponseEntity.ok(userService.getFriendListById(userId));
+    public ResponseEntity<Page<FriendDTO>> showFriendList(@PathVariable String userId,
+                                                          @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                          @RequestParam(defaultValue = "25") @Min(1) @Max(50) int size){
+        return ResponseEntity.ok(userService.getFriendListById(userId, page, size));
     }
 
     @GetMapping("/friendRequests") // user is obtained by token
@@ -56,8 +64,10 @@ public class UserController {
     }
 
     @GetMapping("/search/{query}")
-    public ResponseEntity<List<UserSearchDTO>> searchUser(@PathVariable String query){
-        return ResponseEntity.ok(userService.searchUser(query));
+    public ResponseEntity<Slice<UserSearchDTO>> searchUser(@PathVariable String query,
+                                                            @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                            @RequestParam(defaultValue = "10") @Min(1) @Max(20) int size){
+        return ResponseEntity.ok(userService.searchUser(query, page, size));
     }
 
     @PostMapping("/sendFriendRequest/{targetUserId}")
