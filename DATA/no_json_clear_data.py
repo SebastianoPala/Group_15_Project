@@ -18,8 +18,6 @@ MONGO_URI = "mongodb://localhost:27017/"
 MONGO_DB_NAME = "PlayerHive"
 
 NUM_USERS = 10000            # Number of users to generate
-OUTPUT_GAMES = "final_games.json"
-OUTPUT_USERS = "final_users.json"
 
 fake = Faker()
 
@@ -38,7 +36,7 @@ def generate_oid():
     return uuid.uuid4().hex[:24]
 
 def generate_random_date():
-    """Generates a random timestamp between Jan 1, 2023 and today"""
+    """Generates a random datetime object between Jan 1, 2023 and today"""
     start_date = datetime(2023, 1, 1)
     end_date = datetime.now()
     delta = end_date - start_date
@@ -46,14 +44,13 @@ def generate_random_date():
     return start_date + timedelta(seconds=random_seconds)
 
 def generate_recent_timestamp():
-    """Generates an ISO timestamp not older than 1 month"""
+    """Generates a datetime object not older than 1 month"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
-    # MODIFICA: Rimosso .isoformat() per mantenere l'oggetto datetime puro per PyMongo
     return fake.date_time_between(start_date=start_date, end_date=end_date)
 
-def format_to_localdate(date_raw):
-    """Parses various date formats and converts them to YYYY-MM-DD for Java LocalDate."""
+def format_to_datetime(date_raw):
+    """Parses various date formats and converts them to a Python datetime object (at midnight)."""
     if not date_raw:
         return None
     date_str = str(date_raw).strip()
@@ -64,13 +61,13 @@ def format_to_localdate(date_raw):
     ]
     for fmt in formats:
         try:
-            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+            return datetime.strptime(date_str, fmt)
         except ValueError:
             continue
     # If it's just a year
     if len(date_str) == 4 and date_str.isdigit():
-        return f"{date_str}-01-01"
-    return date_str # Fallback se la data è già in un formato non riconosciuto
+        return datetime(int(date_str), 1, 1)
+    return None 
 
 # --- DATABASE FUNCTIONS ---
 def check_neo4j_connection():
@@ -92,7 +89,6 @@ def clear_neo4j(session):
 def manage_neo4j_indexes(session, action="CREATE"):
     if action == "CREATE":
         print("   -> Creating indexes on User.id and Game.id...")
-        # FIX: L'indice ora viene creato sulla proprietà 'id' per User
         session.run("CREATE INDEX user_id_idx IF NOT EXISTS FOR (u:User) ON (u.id)")
         session.run("CREATE INDEX game_id_idx IF NOT EXISTS FOR (g:Game) ON (g.id)")
         session.run("CALL db.awaitIndexes()")
@@ -101,21 +97,28 @@ def manage_neo4j_indexes(session, action="CREATE"):
         session.run("DROP INDEX user_id_idx IF EXISTS")
         session.run("DROP INDEX game_id_idx IF EXISTS")
 
-def upload_to_mongodb(games_data, users_data):
+def upload_to_mongodb(games_data, users_data, all_reviews_data):
     """Uploads the finalized in-memory dictionaries directly to MongoDB."""
-    print(f"\n8. Connecting to MongoDB ({MONGO_URI})...")
+    print(f"\n7. Connecting to MongoDB ({MONGO_URI})...")
     client = MongoClient(MONGO_URI)
     db = client[MONGO_DB_NAME]
     
-    print(f"   -> Dropping existing '{MONGO_DB_NAME}.games' and '{MONGO_DB_NAME}.users' collections...")
+    print(f"   -> Dropping existing '{MONGO_DB_NAME}' collections (games, users, reviews)...")
     db.games.drop()
     db.users.drop()
+    db.reviews.drop()
 
     print("   -> Formatting ObjectIds for MongoDB insertion...")
     mongo_games = []
     for g in games_data:
         g_copy = g.copy()
         g_copy["_id"] = ObjectId(g["_id"]["$oid"])
+        # Format ObjectIds in allReviews array
+        g_copy["allReviews"] = [ObjectId(r_id) for r_id in g_copy.get("allReviews", [])]
+        # Format user_ids inside recentReviews array
+        for rr in g_copy.get("recentReviews", []):
+            rr["_id"] = ObjectId(rr["_id"]["$oid"])
+            rr["user_id"] = ObjectId(rr["user_id"])
         mongo_games.append(g_copy)
         
     mongo_users = []
@@ -123,12 +126,26 @@ def upload_to_mongodb(games_data, users_data):
         u_copy = u.copy()
         u_copy["_id"] = ObjectId(u["_id"]["$oid"])
         mongo_users.append(u_copy)
+        
+    mongo_reviews = []
+    for r in all_reviews_data:
+        r_copy = r.copy()
+        r_copy["_id"] = ObjectId(r["_id"]["$oid"])
+        r_copy["game_id"] = ObjectId(r["game_id"])
+        r_copy["user_id"] = ObjectId(r["user_id"])
+        mongo_reviews.append(r_copy)
 
     print("   -> Inserting Game documents into MongoDB...")
     db.games.insert_many(mongo_games)
     
     print("   -> Inserting User documents into MongoDB...")
     db.users.insert_many(mongo_users)
+    
+    if mongo_reviews:
+        print("   -> Inserting Review documents into MongoDB...")
+        # Per inserimenti enormi in futuro, usa batch o ordered=False
+        db.reviews.insert_many(mongo_reviews)
+        
     print("   -> MongoDB upload complete!")
     client.close()
 
@@ -170,17 +187,17 @@ def main():
         games_list.append({
             "_id": {"$oid": generate_oid()},
             "name": game_data.get("name", ""),
-            "release_date": format_to_localdate(game_data.get("release_date")),
-            "price": game_data.get("price"),
-            "discount": discount,
+            "release_date": format_to_datetime(game_data.get("release_date")),
+            "price": float(game_data.get("price", 0.0) if game_data.get("price") is not None else 0.0), 
+            "discount": int(discount),
             "description": game_data.get("detailed_description"),
-            "reviews": [],
             "image": game_data.get("header_image"),
             "supportedOS": supported_os,
-            "achievements": game_data.get("achievements", 0),
+            "achievements": int(game_data.get("achievements", 0)), 
             "developers": game_data.get("developers", []),
             "publishers": game_data.get("publishers", []),
-            "genres": flat_genres
+            "genres": flat_genres,
+            "raw_reviews": [] # Array temporaneo per l'elaborazione
         })
     print(f"   -> Successfully loaded and cleaned {len(games_list)} games.")
 
@@ -189,17 +206,20 @@ def main():
     users_list = []
     for i in range(NUM_USERS):
         username = fake.unique.user_name()
+        birthdate_raw = fake.date_of_birth(minimum_age=15)
+        birthdate_dt = datetime(birthdate_raw.year, birthdate_raw.month, birthdate_raw.day)
+        
         users_list.append({
             "_id": {"$oid": generate_oid()},
             "username": username,
             "password": hashlib.sha256(username.encode('utf-8')).hexdigest(),
             "email": fake.unique.email(),
-            "birthdate": fake.date_of_birth(minimum_age=15).isoformat(),
+            "birthdate": birthdate_dt, 
             "role": "USER",
             "friendRequests": [],
             "friends": 0,
             "numGames": 0,
-            "hoursPlayed": 0,
+            "hoursPlayed": 0.0,
             "pfpURL": f"/Playerhive/pfp/{uuid.uuid4().hex}"
         })
         if (i + 1) % 1000 == 0 or (i + 1) == NUM_USERS:
@@ -218,36 +238,64 @@ def main():
         print("ERROR: 'reviews.csv' not found.")
         sys.exit(1)
         
+    all_global_reviews = [] # Lista che andrà a popolare la nuova collection 'reviews'
+        
     for i, user in enumerate(users_list):
         M = random.randint(0, 20)
         for _ in range(M):
             game = random.choice(games_list)
-            game["reviews"].append({
+            review_doc = {
+                "_id": {"$oid": generate_oid()},
+                "game_id": game["_id"]["$oid"],
                 "user_id": user['_id']['$oid'],
                 "username": user['username'],
+                "pfpURL": user["pfpURL"],
                 "review_text": random.choice(review_texts),
-                "score": round(random.uniform(0.0, 10.0), 1),
-                # MODIFICA: Rimosso .isoformat() per lasciare l'oggetto datetime puro per PyMongo
-                "timestamp": generate_random_date()
-            })
+                "score": float(round(random.uniform(0.0, 10.0), 1)),
+                "timestamp": generate_random_date() 
+            }
+            game["raw_reviews"].append(review_doc)
+            all_global_reviews.append(review_doc)
             
         if (i + 1) % 1000 == 0 or (i + 1) == len(users_list):
             print(f"   -> Assigned reviews for {i + 1}/{len(users_list)} users...", end='\r')
     print()
             
-    print("   -> Sorting reviews chronologically and calculating sumScore and countScore...")
+    print("   -> Structuring recentReviews and allReviews for MongoDB optimization...")
     for i, game in enumerate(games_list):
-        game["reviews"].sort(key=lambda x: x["timestamp"])
+        # 1. Ordina le recensioni cronologicamente (dalla più vecchia alla più nuova)
+        game["raw_reviews"].sort(key=lambda x: x["timestamp"])
         
-        if game["reviews"]:
-            game["sumScore"] = round(sum(r["score"] for r in game["reviews"]), 1)
-            game["countScore"] = len(game["reviews"])
+        if game["raw_reviews"]:
+            game["sumScore"] = float(round(sum(r["score"] for r in game["raw_reviews"]), 1))
+            game["countScore"] = int(len(game["raw_reviews"]))
         else:
             game["sumScore"] = 0.0
             game["countScore"] = 0
             
+        # 2. Crea l'array allReviews con SOLO gli ID, ordinati cronologicamente
+        # In questo modo, le nuove recensioni potranno essere semplicemente $push-ate in fondo
+        game["allReviews"] = [r["_id"]["$oid"] for r in game["raw_reviews"]]
+        
+        # 3. Crea l'array recentReviews prendendo le ultime 25 recensioni e ribaltando l'ordine
+        # (dalla più nuova alla più vecchia) per averle pronte da mostrare sul frontend
+        # raw_reviews[::-1] ribalta la lista, [:25] prende i primi 25
+        recent_25 = game["raw_reviews"][::-1][:25]
+        
+        # Rimuoviamo il game_id dai documenti embedded perché è ridondante (siamo già dentro al gioco)
+        embedded_recent = []
+        for r in recent_25:
+            r_copy = r.copy()
+            r_copy.pop("game_id", None) 
+            embedded_recent.append(r_copy)
+            
+        game["recentReviews"] = embedded_recent
+        
+        # Elimina l'array temporaneo raw_reviews
+        del game["raw_reviews"]
+            
         if (i + 1) % 1000 == 0 or (i + 1) == len(games_list):
-            print(f"   -> Processed scores for {i + 1}/{len(games_list)} games...", end='\r')
+            print(f"   -> Processed structural reviews for {i + 1}/{len(games_list)} games...", end='\r')
     print()
 
     # 4. GAME PLAY HISTORY
@@ -261,9 +309,9 @@ def main():
         total_hours = 0.0
         
         for game in selected_games:
-            hours = round(random.uniform(0.1, 500.0), 1)
+            hours = float(round(random.uniform(0.1, 500.0), 1))
             total_hours += hours
-            achievements = random.randint(0, game.get("achievements", 0))
+            achievements = int(random.randint(0, game.get("achievements", 0)))
             
             game_id_str = game["_id"]["$oid"]
             played_relationships.append({
@@ -276,8 +324,8 @@ def main():
             game_playtime_stats[game_id_str]["total_hours"] += hours
             game_playtime_stats[game_id_str]["user_count"] += 1
             
-        user["numGames"] = M
-        user["hoursPlayed"] = round(total_hours, 1)
+        user["numGames"] = int(M)
+        user["hoursPlayed"] = float(round(total_hours, 1))
         
         if (i + 1) % 1000 == 0 or (i + 1) == len(users_list):
             print(f"   -> Generated play history for {i + 1}/{len(users_list)} users...", end='\r')
@@ -287,8 +335,8 @@ def main():
     for i, game in enumerate(games_list):
         stats = game_playtime_stats[game["_id"]["$oid"]]
         if stats["user_count"] > 0:
-            game["totalHoursPlayed"] = round(stats["total_hours"], 1)
-            game["numPlayers"] = stats["user_count"]
+            game["totalHoursPlayed"] = float(round(stats["total_hours"], 1))
+            game["numPlayers"] = int(stats["user_count"])
         else:
             game["totalHoursPlayed"] = 0.0
             game["numPlayers"] = 0
@@ -343,7 +391,6 @@ def main():
     print("\n6. Connecting to Neo4j to upload Graph Database...")
     neo4j_games = [{"id": g["_id"]["$oid"], "name": g.get("name",""), "achievements": g.get("achievements",0), "image": g.get("image","")} for g in games_list]
     
-    # FIX: Rinominata la chiave da "user_id" a "id" in fase di generazione per Neo4j
     neo4j_users = [{"id": u["_id"]["$oid"], "username": u["username"], "pfpURL": u["pfpURL"]} for u in users_list]
 
     try:
@@ -355,19 +402,16 @@ def main():
             session.run("UNWIND $games AS game CREATE (g:Game {id: game.id, name: game.name, achievements: game.achievements, image: game.image})", games=neo4j_games)
             
             print("   -> Inserting User Nodes...")
-            # FIX: La query Cypher ora salva "id: user.id" al posto di "user_id: user.user_id"
             session.run("UNWIND $users AS user CREATE (u:User {id: user.id, username: user.username, pfpURL: user.pfpURL})", users=neo4j_users)
             
             manage_neo4j_indexes(session, "CREATE")
             
             print(f"   -> Inserting {len(played_relationships)} [:PLAYED] relationships...")
             for i in range(0, len(played_relationships), 10000):
-                # FIX: MATCH cerca il campo 'id' nell'utente (u:User {id: rel.user_id})
                 session.run("UNWIND $rels AS rel MATCH (u:User {id: rel.user_id}) MATCH (g:Game {id: rel.game_id}) CREATE (u)-[:PLAYED {hoursPlayed: rel.hoursPlayed, achievements: rel.achievements}]->(g)", rels=played_relationships[i:i+10000])
 
             print(f"   -> Inserting {len(friend_rels)} mutual [:FRIENDS_WITH] relationship pairs...")
             for i in range(0, len(friend_rels), 5000):
-                # FIX: MATCH cerca il campo 'id' nell'utente (u1:User {id: pair.id1})
                 session.run("UNWIND $pairs AS pair MATCH (u1:User {id: pair.id1}) MATCH (u2:User {id: pair.id2}) MERGE (u1)-[:FRIENDS_WITH]->(u2) MERGE (u2)-[:FRIENDS_WITH]->(u1)", pairs=friend_rels[i:i+5000])
 
             manage_neo4j_indexes(session, "DROP")
@@ -377,16 +421,8 @@ def main():
     except Exception as e:
         print(f"   -> ERROR during Neo4j operations: {e}")
 
-    # 7. SAVE JSON FILES
-    print(f"\n7. Saving final in-memory data to '{OUTPUT_GAMES}' and '{OUTPUT_USERS}'...")
-    # MODIFICA: Aggiunto default=str in modo che il .json venga salvato regolarmente senza crashare a causa del formato datetime
-    with open(OUTPUT_GAMES, 'w', encoding='utf-8') as f:
-        json.dump(games_list, f, indent=4, default=str)
-    with open(OUTPUT_USERS, 'w', encoding='utf-8') as f:
-        json.dump(users_list, f, indent=4, default=str)
-
-    # 8. MONGODB UPLOAD
-    upload_to_mongodb(games_list, users_list)
+    # 7. MONGODB UPLOAD
+    upload_to_mongodb(games_list, users_list, all_global_reviews) # Passo la nuova lista
 
     print("\n=== PIPELINE FINISHED SUCCESSFULLY! ===")
 

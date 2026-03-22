@@ -3,35 +3,32 @@ REVIEWS:
     we have to paginate them
 
 GAMES AND USER SEARCH:
-    - if i search for the letter "e", i get one bajillion results
-    paginate games and users search result
+    NOTHING
 
-    >GameSearchDTO
-        - if i return the game id, is that a security issue / good practice?
-        - maybe sort them by user score? do we need to return user score in the general search?
-
-    >EditGameDTO
-        - add the possibility to leave empty fields?
 USERS
-    -paginate friend requests?
-    -paginate friends? or is it done by neo4j automatically
     -in the profile DTO, do we need the friend request number if a user requests another user's profile????
     -friend requests should be queried through the token's username
-    -add achievement numbers checks
 
 GAMES
-    -manage average hours played with insertions
-    -manage average scores with insertions
+    -manage average hours played with deletions
+    -manage average scores with deletions
+    -fix all and recent reviews data format
+    -update game later after getting added to a library
+    -decide if we are sending the first 25 embedded reviews with the gameinfo query? prolly a good idea
+    -decide if we send reviews ids, or if we query on username
+    - FIX REVIEWS SORTING, also add userId to "allReviews" allowing trivial delete?
+    - ^^^^^^^ probably better to just remove reviews based on review id, at the end of the day you click on a review before deleting it
+    -how do we identify if a user already left a review in a game? do we have to search the whole collection?
 
 ADMINS
-    -add a batch review delete command?
-    -add supportedOS controls?
+    -fix user libraries after deleting a game
+    -fix game data after deleting a game
 
 GENERAL
     -add all controls to inserts and edits
     - add transactions
 IDEAS
-    -return the most popular games per age range?
+    NOTHING
 
 AI SECTION
     -writing boilerplate

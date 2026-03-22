@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @NoArgsConstructor
@@ -15,11 +16,13 @@ import java.util.List;
 public class GameInfoDTO {
 
     private String name;
-    private String releaseDate;
+    private LocalDate releaseDate;
     private Double price;
     private Integer discount;
     private String description;
-    private List<ReviewDTO> reviews;
+
+    private List<RecentReviewDTO> recentReviews;
+
     private String imageURL;
     private List<String> supportedOS;
     private Integer achievements;
