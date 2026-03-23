@@ -1,6 +1,5 @@
-package com.unipi.PlayerHive.DTO.games;
+package com.unipi.PlayerHive.DTO.reviews;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -14,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 
-public class addReviewDTO {
+public class AddReviewDTO {
 
     @Size(max = 255)
     private String reviewText;

@@ -2,17 +2,19 @@ package com.unipi.PlayerHive.repository.games;
 
 import com.unipi.PlayerHive.DTO.games.GameSearchDTO;
 import com.unipi.PlayerHive.DTO.games.LightGameDTO;
-import com.unipi.PlayerHive.DTO.games.RecentReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.OldReviewDTO;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
 import com.unipi.PlayerHive.model.Game;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -29,14 +31,38 @@ public interface GameRepository extends MongoRepository<Game, String> {
 
     @Query("{ '_id': ?0 }")
     @Update("{ '$push': { " +
-            "    'allReviews': ?1, " + // Inserisce l'ID in coda (comportamento standard)
+            "    'allReviews': ?1, " +
             "    'recentReviews': { " +
-            "        '$each': [?2], " + // Il nuovo oggetto recensione
-            "        '$position': 0, " + // Lo mette in testa
-            "        '$slice': 25 " + // Trattiene solo i primi 25 elementi (elimina il più vecchio in coda)
+            "        '$each': [?2], " +
+            "        '$position': 0, " +
+            "        '$slice': 25 " +
             "    } " +
             "}, " +
             "'$inc' :{ 'countScore': 1, 'sumScore' : ?3} }")
-    int addReviewToGame(String gameId, ObjectId reviewId, RecentReviewDTO recentReview, float score);
+    int addReviewToGame(String gameId, OldReviewDTO oldReview, ReviewDTO recentReview, float score);
 
+    @Query(value = "{ '_id': ?0, 'allReviews.user_id': ?1 }", exists = true)
+    boolean hasUserAlreadyReviewed(String gameId, ObjectId  userId);
+
+    @Query("{ '_id': ?0, 'allReviews.review_id': ObjectId(?1) }") // todo fix
+    @Update("{" +
+            "  '$inc': { 'countScore': -1, 'sumScore': ?2 }," +
+            "  '$pull': {" +
+            "    'allReviews': { 'review_id': ObjectId(?1) }," +
+            "    'recentReviews': { '_id': ObjectId(?1) }" +
+            "  }" +
+            "}")
+    int deleteReviewFromGame(ObjectId gameId, String reviewId, Float score);
+
+    @Aggregation(pipeline = {
+            "{ '$match': { '_id': ?0 } }",
+            "{ '$project': { '_id': 0, 'count': { '$size': '$allReviews' } } }"
+    })
+    int getReviewNumber(String gameId);
+
+    @Aggregation(pipeline = {
+            "{ '$match': { '_id': ?0 } }",
+            "{ '$project': { 'reviews': { '$slice': ['$allReviews', ?1, ?2] } } }"
+    })
+    ReviewContainerDTO getGameReviews(String gameId, int skip, int limit);
 }

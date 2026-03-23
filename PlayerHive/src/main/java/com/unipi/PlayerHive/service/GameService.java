@@ -1,6 +1,11 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.*;
+import com.unipi.PlayerHive.DTO.reviews.OldReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
+import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.Review;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
@@ -15,8 +20,9 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @Service
 public class GameService {
@@ -63,24 +69,56 @@ public class GameService {
     }
 
     @Transactional
-    public void addReview(String gameId, addReviewDTO addReviewDTO) {
-        String userId ="aodawjiodjawi9awd"; // FIX TODO, also do we need to check if the user is valid? -_-
+    public void addReview(String gameId, AddReviewDTO addReviewDTO) {
+        String userId ="2c6d3a290cee4e9bb0c3b8bc"; // FIX TODO, also do we need to check if the user is valid? -_-
         String userPFPurl = "fortnite.com";
         String username = "theChillRapist";
-        // TODO. PREVENTR USER FROM DOUBEL REVIEWING
-        Review review = new Review(null,gameId,userId,username,userPFPurl,addReviewDTO.getReviewText(), addReviewDTO.getScore(), LocalDateTime.now());
+
+        ObjectId userIdObj = new ObjectId(userId);
+
+        if(gameRepository.hasUserAlreadyReviewed(gameId, userIdObj)){
+            throw new ResourceAlreadyExistsException("The user already reviewed this game");
+        }
+
+        Review review = new Review(null,new ObjectId(gameId),userIdObj,username,userPFPurl,
+                                            addReviewDTO.getReviewText(), addReviewDTO.getScore(), LocalDateTime.now());
+
         Review savedReview = reviewRepository.save(review);
-        RecentReviewDTO recent = reviewMapper.reviewToRecentReviewDTO(savedReview);
-        int modified = gameRepository.addReviewToGame(gameId, new ObjectId(savedReview.getId()), recent, recent.getScore());
+
+        ReviewDTO recentReview = reviewMapper.reviewToRecentReviewDTO(savedReview);
+
+        OldReviewDTO oldReview = new OldReviewDTO(new ObjectId(recentReview.getId()),userIdObj);
+
+        int modified = gameRepository.addReviewToGame(gameId,oldReview , recentReview, recentReview.getScore());
         if(modified != 1)
-            throw new RuntimeException("An error has occurred");
+            throw new RuntimeException("An error has occurred when adding the review to the game");
     }
 
+    @Transactional
+    public void deleteReview(String reviewId) {
+        Review deletedReview = reviewRepository.removeById(reviewId).orElseThrow(() -> new NoSuchElementException("The review provided does not exist"));
+        int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
+        if(modified != 1)
+            throw new RuntimeException("The server couldn't delete the review due to inconsistencies");
 
-    public void deleteReviewFromGame(String gameId) { // where do we get the username from??
     }
 
-    //public ???? getGameReviews(String gameId, int page, int size) {
+    public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
+    // IMPORTANT TO RETURN THE REVIEW ID TO ALLOW FOR DELETE
+        int reviewNumber = gameRepository.getReviewNumber(gameId);
 
-    //}
+        int startingReverseIndex = reviewNumber - page*size - 1;
+
+        if(startingReverseIndex < 0)
+            throw new NoSuchElementException("No reviews have been found at page: "+ page+", size: "+size); // todo maybe we should return 200 anyways?
+        size = (startingReverseIndex + 1 - size < 0) ? startingReverseIndex + 1 : size;
+
+        int startingIndex = startingReverseIndex - size + 1;
+
+        ReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,startingIndex,size);
+
+        List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
+                                    oldReviewDTO.getReviewId().toString()).toList();
+        return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+    }
 }

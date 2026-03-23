@@ -3,6 +3,7 @@ package com.unipi.PlayerHive.service;
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.games.LightGameDTO;
 import com.unipi.PlayerHive.DTO.users.*;
+import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
@@ -10,6 +11,7 @@ import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.utility.UserMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -45,7 +47,7 @@ public class UserService {
 
         OwnProfileDTO ownProfile = userMapper.userToOwnProfileDTO(user);
 
-        ownProfile.setFriendRequestsNumber(user.getFriendRequests().size());
+        ownProfile.setFriendRequestsNumber(user.getFriendRequests().size()); // todo ponder if we just send the friend requests and that's it
 
         return ownProfile;
     }
@@ -76,12 +78,12 @@ public class UserService {
         }
         boolean success = userNeo4jRepository.saveGameInLibrary(userId,addGame.getGameId(),addGame.getHoursPlayed().doubleValue(),addGame.getAchievements());
         if(!success){
-            throw new IllegalArgumentException("The achievement number exceeds the game's achievement number"); // ADD TO EXCEPTION MANAGER
+            throw new IllegalArgumentException("The achievement number exceeds the game's achievement number");
         }
         //game.setTotalHoursPlayed(totalPlaytime);
         int modified = userRepository.updateUserStats(userId, userPlaytime,gameNumberToAdd);
         if(modified<=0)
-            throw new RuntimeException("The server was unable to complete the operation");
+            throw new RuntimeException("The server was unable to increase the player's gaming stats");
         //gameRepository.save(game);!! TODO delay update
 
     }
@@ -99,11 +101,11 @@ public class UserService {
         //game.setTotalHoursPlayed(game.getTotalHoursPlayed() - userGamePlaytime.floatValue()); // TODO REMOVE
         int modified = userRepository.updateUserStats(userId, -userGamePlaytime.floatValue(),-1);
         if(modified<=0)
-            throw new RuntimeException("The server was unable to complete the operation");
+            throw new RuntimeException("The server was unable to decrease the player's gaming stats");
 
         boolean success = userNeo4jRepository.removeGameFromLibrary(userId,gameId);
         if(!success)
-            throw new RuntimeException("The server was unable to complete the operation");
+            throw new RuntimeException("The server was unable to remove the game from the library");
     }
 
     public Page<FriendDTO> getFriendListById(String userId, int page, int size) {
@@ -111,7 +113,8 @@ public class UserService {
         return userNeo4jRepository.findUsersFriends(userId, pageable);
     }
 
-    public List<FriendRequestDTO> getFriendRequestsById(String userId) { // THE STRING MUST BE OBTAINED BY THE TOKEN TODO
+    public List<FriendRequestDTO> getFriendRequests() { // THE STRING MUST BE OBTAINED BY THE TOKEN TODO
+        String userId = "4e7ce1d31dc149248d5162d8"; // TODO can this query be avoided with auth?, if yes, maybe we just return it in my profile query
         User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
         return user.getFriendRequests();
     }
@@ -127,35 +130,47 @@ public class UserService {
         return searchResult;
     }
 
-
-    public void sendRequestToUser(String targetUserId) {
-        String userId ="424038da54b149e296df20b3";
+    //@Transactional
+    public String sendRequestToUser(String targetUserId) {
+        String userId ="2c6d3a290cee4e9bb0c3b8bc";
         // is there a way to avoid this query?? check auth maybe, we need the pfp link
         User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("Who is bro -_-")); // TODO, ADD QUERY ONLY FOR PFP
 
-        FriendRequestDTO requestDTO = new FriendRequestDTO(userId,user.getUsername(),user.getPfpURL(), LocalDateTime.now());
+        if(userId.equalsIgnoreCase(targetUserId)){
+            throw new IllegalArgumentException("The user attempted to send a request to himself");
+        }
+        if(userNeo4jRepository.checkFriendshipExistence(userId,targetUserId)){
+            throw new ResourceAlreadyExistsException("The users are already friends");
+        }
 
-        int modified = userRepository.addFriendRequest(targetUserId,userId,requestDTO); // add controls to return value
+        try { // we first check if we already have a request from targetUser
+            this.approveRequestFromUser(targetUserId);
+            return "The friendship has been established";
+
+        } catch (NoSuchElementException ignored) {} // if no friend request was present, NoSuchElementException is thrown
+
+        FriendRequestMongoDTO requestDTO = new FriendRequestMongoDTO(new ObjectId(userId),user.getUsername(),user.getPfpURL(), LocalDateTime.now());
+
+        int modified = userRepository.addFriendRequest(targetUserId,requestDTO.getUserId(),requestDTO); // add controls to return value
         if(modified != 1)
-            throw new RuntimeException("The server was unable to complete the operation");
+            throw new ResourceAlreadyExistsException("The friend request is already present");
+
+        return "Friend request sent successfully";
     }
 
     @Transactional
-    public void approveRequestFromUser(String targetUserId) {
-        String userId ="a669e87a731043d49e38ba1d";
+    public void approveRequestFromUser(String targetUserId) { // avoid looking for the user id twice?
+        String userId ="2c6d3a290cee4e9bb0c3b8bc";
 
         int result = userRepository.acceptFriendRequest(userId,targetUserId);
-        System.out.println(result);
         if(result != 1)
             throw new NoSuchElementException("Friend request was not present!");
 
         result = userRepository.editFriendCounter(targetUserId, 1);
-        System.out.println(result);
         if(result != 1)
-            throw new RuntimeException("Server Error");
+            throw new RuntimeException("The server could't increase the user's friend counter");
 
         boolean success = userNeo4jRepository.createFriendship(userId,targetUserId);
-        System.out.println(success);
         if(!success)
             throw new RuntimeException("The server was unable to complete the operation");
 
@@ -181,7 +196,7 @@ public class UserService {
 
         int result = userRepository.editFriendCounter(userId, -1);
         if(result != 1)
-            throw new RuntimeException("The server was unable to complete the operation");
+            throw new RuntimeException("The server was unable to decrease the friend counter");
     }
 
 }

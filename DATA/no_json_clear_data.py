@@ -113,8 +113,16 @@ def upload_to_mongodb(games_data, users_data, all_reviews_data):
     for g in games_data:
         g_copy = g.copy()
         g_copy["_id"] = ObjectId(g["_id"]["$oid"])
-        # Format ObjectIds in allReviews array
-        g_copy["allReviews"] = [ObjectId(r_id) for r_id in g_copy.get("allReviews", [])]
+        
+        # Format ObjectIds in allReviews array containing dictionaries
+        g_copy["allReviews"] = [
+            {
+                "review_id": ObjectId(r["review_id"]),
+                "user_id": ObjectId(r["user_id"])
+            } 
+            for r in g_copy.get("allReviews", [])
+        ]
+        
         # Format user_ids inside recentReviews array
         for rr in g_copy.get("recentReviews", []):
             rr["_id"] = ObjectId(rr["_id"]["$oid"])
@@ -125,6 +133,11 @@ def upload_to_mongodb(games_data, users_data, all_reviews_data):
     for u in users_data:
         u_copy = u.copy()
         u_copy["_id"] = ObjectId(u["_id"]["$oid"])
+        
+        # Converte l'user_id delle richieste di amicizia in ObjectId
+        for req in u_copy.get("friendRequests", []):
+            req["user_id"] = ObjectId(req["user_id"])
+            
         mongo_users.append(u_copy)
         
     mongo_reviews = []
@@ -241,7 +254,8 @@ def main():
     all_global_reviews = [] # Lista che andrà a popolare la nuova collection 'reviews'
         
     for i, user in enumerate(users_list):
-        M = random.randint(0, 20)
+        # Raddoppiato il numero massimo di recensioni per utente (da 20 a 40)
+        M = random.randint(0, 40)
         for _ in range(M):
             game = random.choice(games_list)
             review_doc = {
@@ -263,7 +277,7 @@ def main():
             
     print("   -> Structuring recentReviews and allReviews for MongoDB optimization...")
     for i, game in enumerate(games_list):
-        # 1. Ordina le recensioni cronologicamente (dalla più vecchia alla più nuova)
+        # 1. Ordina le recensioni cronologicamente (dalla più vecchia alla più nuova in raw_reviews)
         game["raw_reviews"].sort(key=lambda x: x["timestamp"])
         
         if game["raw_reviews"]:
@@ -273,16 +287,22 @@ def main():
             game["sumScore"] = 0.0
             game["countScore"] = 0
             
-        # 2. Crea l'array allReviews con SOLO gli ID, ordinati cronologicamente
-        # In questo modo, le nuove recensioni potranno essere semplicemente $push-ate in fondo
-        game["allReviews"] = [r["_id"]["$oid"] for r in game["raw_reviews"]]
+        # 2. Crea l'array allReviews con dizionari contenenti review_id e user_id
+        # Dato che raw_reviews è ordinato (vecchie in testa, nuove in fondo),
+        # l'array allReviews sarà ottimizzato per fare l'append di nuove recensioni in fondo.
+        game["allReviews"] = [
+            {
+                "review_id": r["_id"]["$oid"], 
+                "user_id": r["user_id"]
+            } 
+            for r in game["raw_reviews"]
+        ]
         
         # 3. Crea l'array recentReviews prendendo le ultime 25 recensioni e ribaltando l'ordine
-        # (dalla più nuova alla più vecchia) per averle pronte da mostrare sul frontend
-        # raw_reviews[::-1] ribalta la lista, [:25] prende i primi 25
+        # raw_reviews[::-1] ribalta la lista mettendo in testa le PIÙ RECENTI (per inserimenti in testa sul client).
         recent_25 = game["raw_reviews"][::-1][:25]
         
-        # Rimuoviamo il game_id dai documenti embedded perché è ridondante (siamo già dentro al gioco)
+        # Rimuoviamo il game_id dai documenti embedded perché è ridondante
         embedded_recent = []
         for r in recent_25:
             r_copy = r.copy()
@@ -422,7 +442,7 @@ def main():
         print(f"   -> ERROR during Neo4j operations: {e}")
 
     # 7. MONGODB UPLOAD
-    upload_to_mongodb(games_list, users_list, all_global_reviews) # Passo la nuova lista
+    upload_to_mongodb(games_list, users_list, all_global_reviews)
 
     print("\n=== PIPELINE FINISHED SUCCESSFULLY! ===")
 

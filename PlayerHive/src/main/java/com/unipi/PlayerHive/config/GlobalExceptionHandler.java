@@ -1,5 +1,6 @@
 package com.unipi.PlayerHive.config;
 
+import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -15,7 +16,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> generalExceptionHandler(Exception e) {
-     ///   return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server");
+     ///   return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server. Message:" +e.toMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString()); // TODO REMOVE, left for debug
     }
 
@@ -29,14 +30,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body("The method is not allowed");
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> illegalArgumentExceptionHandler(IllegalArgumentException e){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("The user provided an illegal argument. CAUSE: " + e.getMessage());
+    }
 
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<String> resourceAlreadyExistsExceptionHandler(ResourceAlreadyExistsException e){
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("The following resource is already present: " + e.getMessage());
+    }
     /*
 
-    @ExceptionHandler()
-    public ResponseEntity<Map<String,String>>
 
-    @ExceptionHandler()
-    public ResponseEntity<Map<String,String>>
+
 
     @ExceptionHandler()
     public ResponseEntity<Map<String,String>>

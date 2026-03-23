@@ -1,9 +1,12 @@
-package com.unipi.PlayerHive.DTO.games;
+package com.unipi.PlayerHive.DTO.reviews;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -15,13 +18,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class RecentReviewDTO {
+public class ReviewDTO {
 
     @Id
     private String id;
 
     @Field("user_id")
-    private String userId;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private ObjectId userId;
     private String username;
     private String pfpURL;
 
