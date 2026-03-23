@@ -96,7 +96,9 @@ public class GameService {
 
     @Transactional
     public void deleteReview(String reviewId) {
-        Review deletedReview = reviewRepository.removeById(reviewId).orElseThrow(() -> new NoSuchElementException("The review provided does not exist"));
+        String userId = "1911c59f6d93465999276f1e";
+        Review deletedReview = reviewRepository.removeByIdAndUserId(reviewId, new ObjectId(userId)).orElseThrow(() -> new NoSuchElementException("The review provided does not exist, or it belongs to a different user"));
+
         int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
         if(modified != 1)
             throw new RuntimeException("The server couldn't delete the review due to inconsistencies");
