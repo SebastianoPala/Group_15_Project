@@ -1,6 +1,5 @@
 REVIEWS:
-    - if a game has 100000 reviews, we cant possibly return them all in every game retrieval.
-    we have to paginate them
+    Maybe add a review service? is it worth?
 
 GAMES AND USER SEARCH:
     NOTHING
@@ -8,17 +7,17 @@ GAMES AND USER SEARCH:
 USERS
     -in the profile DTO, do we need the friend request number if a user requests another user's profile????
     -friend requests should be queried through the token's username
+    -do we just send friend requests with my profile queries
+    -add possibility to edit reviews?
 
 GAMES
     -manage average hours played with deletions
     -manage average scores with deletions
-    -fix all and recent reviews data format
     -update game later after getting added to a library
     -decide if we are sending the first 25 embedded reviews with the gameinfo query? prolly a good idea
-    -decide if we send reviews ids, or if we query on username
     - FIX REVIEWS SORTING, also add userId to "allReviews" allowing trivial delete?
     - ^^^^^^^ probably better to just remove reviews based on review id, at the end of the day you click on a review before deleting it
-    -how do we identify if a user already left a review in a game? do we have to search the whole collection?
+    -manage slicing of reviews, especially recent ones
 
 ADMINS
     -fix user libraries after deleting a game
@@ -27,6 +26,7 @@ ADMINS
 GENERAL
     -add all controls to inserts and edits
     - add transactions
+    -check if we can return List<> or if we need to return a class containing one
 IDEAS
     NOTHING
 

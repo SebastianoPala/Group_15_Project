@@ -60,7 +60,7 @@ public class UserController {
 
     @GetMapping("/friendRequests") // user is obtained by token
     public ResponseEntity<List<FriendRequestDTO>> showFriendRequests(){
-        return ResponseEntity.ok(userService.getFriendRequestsById("fb39502211c742f9a7954e33"));
+        return ResponseEntity.ok(userService.getFriendRequests());
     }
 
     @GetMapping("/search/{query}")
@@ -72,8 +72,7 @@ public class UserController {
 
     @PostMapping("/sendFriendRequest/{targetUserId}")
     public ResponseEntity<String> sendFriendRequest(@PathVariable String targetUserId){
-        userService.sendRequestToUser(targetUserId);
-        return ResponseEntity.ok("Friend request sent successfully");
+        return ResponseEntity.ok(userService.sendRequestToUser(targetUserId));
     }
 
     @PostMapping("/approveFriendRequest/{targetUserId}")

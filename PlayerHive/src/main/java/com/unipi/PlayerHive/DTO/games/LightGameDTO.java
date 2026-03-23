@@ -1,5 +1,6 @@
 package com.unipi.PlayerHive.DTO.games;
 
+import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,7 +28,7 @@ public class LightGameDTO {
     private Integer discount;
     private String description;
 
-    private List<RecentReviewDTO> recentReviews;
+    private List<ReviewDTO> recentReviews;
 
     @Field("image")
     private String imageURL;
