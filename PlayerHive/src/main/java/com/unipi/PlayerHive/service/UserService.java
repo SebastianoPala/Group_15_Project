@@ -130,7 +130,7 @@ public class UserService {
         return searchResult;
     }
 
-    //@Transactional
+    @Transactional
     public String sendRequestToUser(String targetUserId) {
         String userId ="2c6d3a290cee4e9bb0c3b8bc";
         // is there a way to avoid this query?? check auth maybe, we need the pfp link
@@ -144,7 +144,7 @@ public class UserService {
         }
 
         try { // we first check if we already have a request from targetUser
-            this.approveRequestFromUser(targetUserId);
+            this.approveRequestFromUser(targetUserId); //TODO TRANSACTIONAL DOES not work in function calls
             return "The friendship has been established";
 
         } catch (NoSuchElementException ignored) {} // if no friend request was present, NoSuchElementException is thrown
