@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface ReviewRepository extends MongoRepository<Review, String> {
 
-    Optional<Review> removeByIdAndUserId(String reviewId, ObjectId userId);
+    Optional<Review> removeById(String reviewId);
 
     List<ReviewDTO> findByIdInOrderByTimestampDesc(List<String> reviewIds);
 }
