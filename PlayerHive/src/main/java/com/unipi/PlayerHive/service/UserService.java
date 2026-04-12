@@ -8,6 +8,7 @@ import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
+import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.utility.UserMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,6 +37,13 @@ public class UserService {
         this.userNeo4jRepository = userNeo4jRepository;
         this.gameRepository = gameRepository;
         this.userMapper = userMapper;
+    }
+
+    // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out :)
+    private String getAuthenticatedUserId() {
+        return ((UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal())
+                .getUser().getId();
     }
 
     public ProfileDTO getProfileById(String userId) {
@@ -59,8 +68,7 @@ public class UserService {
 
     @Transactional
     public void editLibrary(@Valid AddGameToLibraryDTO addGame) {
-        String userId = "08c5af2f8ce54ffea778ad15"; //will be obtained by token
-        // TODO
+        String userId = getAuthenticatedUserId();
 
         Optional<Double> userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, addGame.getGameId());
 
@@ -90,7 +98,7 @@ public class UserService {
 
     @Transactional
     public void removeGameFromLibrary(String gameId) {
-        String userId = "9bb8c64ffd2449af9efc47ed"; //will be obtained by token
+        String userId = getAuthenticatedUserId();
 
         Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, gameId)
                 .orElseThrow(() -> new NoSuchElementException("The game specified is not present in the user's library"));
@@ -113,8 +121,8 @@ public class UserService {
         return userNeo4jRepository.findUsersFriends(userId, pageable);
     }
 
-    public List<FriendRequestDTO> getFriendRequests() { // THE STRING MUST BE OBTAINED BY THE TOKEN TODO
-        String userId = "4e7ce1d31dc149248d5162d8"; // TODO can this query be avoided with auth?, if yes, maybe we just return it in my profile query
+    public List<FriendRequestDTO> getFriendRequests() {
+        String userId = getAuthenticatedUserId();
         User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
         return user.getFriendRequests();
     }
@@ -132,9 +140,9 @@ public class UserService {
 
     @Transactional
     public String sendRequestToUser(String targetUserId) {
-        String userId ="2c6d3a290cee4e9bb0c3b8bc";
-        // is there a way to avoid this query?? check auth maybe, we need the pfp link
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("Who is bro -_-")); // TODO, ADD QUERY ONLY FOR PFP
+        String userId = getAuthenticatedUserId();
+        // we need the full user object here because the friend request includes their pfp and username :/
+        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
 
         if(userId.equalsIgnoreCase(targetUserId)){
             throw new IllegalArgumentException("The user attempted to send a request to himself");
@@ -159,8 +167,8 @@ public class UserService {
     }
 
     @Transactional
-    public void approveRequestFromUser(String targetUserId) { // avoid looking for the user id twice?
-        String userId ="2c6d3a290cee4e9bb0c3b8bc";
+    public void approveRequestFromUser(String targetUserId) {
+        String userId = getAuthenticatedUserId();
 
         int result = userRepository.acceptFriendRequest(userId,targetUserId);
         if(result != 1)
@@ -177,7 +185,7 @@ public class UserService {
     }
 
     public void removeRequestFromUser(String targetUserId) {
-        String userId ="0b593fcce767488da8293709";
+        String userId = getAuthenticatedUserId();
         //if(!userRepository.existsById(userId)) if the user does not exist, the request will simply not be present
         // ...
         int result = userRepository.removeFriendRequest(userId,targetUserId);
@@ -187,7 +195,7 @@ public class UserService {
 
     @Transactional
     public void removeFriend(String friendId) {
-        String userId ="424038da54b149e296df20b3";
+        String userId = getAuthenticatedUserId();
 
         boolean success = userNeo4jRepository.removeFriendById(userId,friendId);
         if(!success){

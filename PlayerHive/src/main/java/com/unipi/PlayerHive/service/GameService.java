@@ -7,6 +7,8 @@ import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.Review;
+import com.unipi.PlayerHive.model.User;
+import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
@@ -17,6 +19,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -42,6 +45,13 @@ public class GameService {
         this.gameMapper = gameMapper;
         this.reviewRepository = reviewRepository;
         this.reviewMapper = reviewMapper;
+    }
+
+    // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out
+    private String getAuthenticatedUserId() {
+        return ((UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal())
+                .getUser().getId();
     }
 
     public GameInfoDTO getGameById(String gameId) { // manage high reviews number case
@@ -70,9 +80,13 @@ public class GameService {
 
     @Transactional
     public void addReview(String gameId, AddReviewDTO addReviewDTO) {
-        String userId ="2c6d3a290cee4e9bb0c3b8bc"; // FIX TODO, also do we need to check if the user is valid? -_-
-        String userPFPurl = "fortnite.com";
-        String username = "theChillRapist";
+        // pull the actual logged-in user from the token, no more hardcoded test data :0
+        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        User user = principal.getUser();
+        String userId = user.getId();
+        String userPFPurl = user.getPfpURL();
+        String username = user.getUsername();
 
         ObjectId userIdObj = new ObjectId(userId);
 
@@ -96,8 +110,17 @@ public class GameService {
 
     @Transactional
     public void deleteReview(String reviewId) {
-        String userId = "1911c59f6d93465999276f1e";
-        Review deletedReview = reviewRepository.removeByIdAndUserId(reviewId, new ObjectId(userId)).orElseThrow(() -> new NoSuchElementException("The review provided does not exist, or it belongs to a different user"));
+        Review deletedReview = reviewRepository.removeById(reviewId).orElseThrow(() -> new NoSuchElementException("The review provided does not exist"));
+
+        // only the review author or an admin can delete this, anyone else gets rejected :/
+        String requesterId = getAuthenticatedUserId();
+        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        boolean isAdmin = principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !deletedReview.getUserId().toHexString().equals(requesterId)) {
+            throw new IllegalArgumentException("You can only delete your own reviews");
+        }
 
         int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
         if(modified != 1)
