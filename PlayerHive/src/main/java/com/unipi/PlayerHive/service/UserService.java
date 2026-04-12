@@ -78,11 +78,11 @@ public class UserService {
 
         // DO I just assume mongodb and neo4j data are synchronized?
         if(userGamePlaytime.isEmpty()){
-           // game.setNumPlayers(game.getNumPlayers() + 1 ); TODO DELAY UPDATE
+            // game.setNumPlayers(game.getNumPlayers() + 1 ); TODO DELAY UPDATE
             gameNumberToAdd++;
         }else{
-           //totalPlaytime -= userGamePlaytime.get().floatValue();
-           userPlaytime -= userGamePlaytime.get().floatValue();
+            //totalPlaytime -= userGamePlaytime.get().floatValue();
+            userPlaytime -= userGamePlaytime.get().floatValue();
         }
         boolean success = userNeo4jRepository.saveGameInLibrary(userId,addGame.getGameId(),addGame.getHoursPlayed().doubleValue(),addGame.getAchievements());
         if(!success){
@@ -140,9 +140,11 @@ public class UserService {
 
     @Transactional
     public String sendRequestToUser(String targetUserId) {
-        String userId = getAuthenticatedUserId();
-        // we need the full user object here because the friend request includes their pfp and username :/
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
+
+        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        User user = principal.getUser();
+        String userId = user.getId();
 
         if(userId.equalsIgnoreCase(targetUserId)){
             throw new IllegalArgumentException("The user attempted to send a request to himself");
