@@ -1,8 +1,6 @@
 package com.unipi.PlayerHive.DTO.reviews;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,6 +17,7 @@ public class AddReviewDTO {
     private String reviewText;
 
     @NotNull
-    @PositiveOrZero
+    @Min(1)
+    @Max(10)
     private Float score;
 }

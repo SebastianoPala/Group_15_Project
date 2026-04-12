@@ -28,6 +28,7 @@ public class Review {
 
     @Field("user_id")
     private ObjectId userId;
+
     private String username;
     private String pfpURL;
 

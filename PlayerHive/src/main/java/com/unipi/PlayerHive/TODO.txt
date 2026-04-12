@@ -18,6 +18,7 @@ GAMES
     - FIX REVIEWS SORTING, also add userId to "allReviews" allowing trivial delete?
     - ^^^^^^^ probably better to just remove reviews based on review id, at the end of the day you click on a review before deleting it
     -manage slicing of reviews, especially recent ones
+    -send numScore as an indicator of the number of reviews
 
 ADMINS
     -fix user libraries after deleting a game
