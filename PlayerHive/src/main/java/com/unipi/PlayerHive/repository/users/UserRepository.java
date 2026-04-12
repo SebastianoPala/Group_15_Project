@@ -1,15 +1,20 @@
 package com.unipi.PlayerHive.repository.users;
 
+import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.users.FriendRequestMongoDTO;
 import com.unipi.PlayerHive.DTO.users.UserSearchDTO;
 import com.unipi.PlayerHive.model.User;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface UserRepository extends MongoRepository<User,String> {
@@ -34,6 +39,9 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$inc' : { 'friends' : ?1 } }")
     int editFriendCounter(String userId, int quantity);
 
+    @Query("{ '_id' : { $in : ?0 } }")
+    @Update("{ '$inc' : { 'friends' : -1 } }")
+    void decrementFriendCounterForUsers(List<String> userIds);
 
     @Query("{ '_id': ?0 }")
     @Update("{ '$inc': { 'hoursPlayed': ?1, 'numGames': ?2 } }")
@@ -44,5 +52,11 @@ public interface UserRepository extends MongoRepository<User,String> {
     boolean existsByEmail(String email);
     
     boolean existsByUsername(String username);
+
+    @Aggregation(pipeline = {
+            "{ '$match': { '_id': ?0 } }",
+            "{ '$project': { 'reviews': { '$slice': ['$FIELD_NAME!', ?1, ?2] } } }"
+    }) //TODO FIXXX
+    UserReviewContainerDTO getUserReviews(String userId, int skip, int limit);
 
 }

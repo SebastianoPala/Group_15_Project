@@ -1,8 +1,8 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.*;
-import com.unipi.PlayerHive.DTO.reviews.OldReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
@@ -12,8 +12,8 @@ import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
-import com.unipi.PlayerHive.utility.GameMapper;
-import com.unipi.PlayerHive.utility.ReviewMapper;
+import com.unipi.PlayerHive.utility.map.GameMapper;
+import com.unipi.PlayerHive.utility.map.ReviewMapper;
 import jakarta.transaction.Transactional;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.PageRequest;
@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @Service
 public class GameService {
@@ -78,6 +77,7 @@ public class GameService {
         return searchResult;
     }
 
+    // TODO: manage the user review array
     @Transactional
     public void addReview(String gameId, AddReviewDTO addReviewDTO) {
         // pull the actual logged-in user from the token, no more hardcoded test data :0
@@ -89,7 +89,7 @@ public class GameService {
         String username = user.getUsername();
 
         ObjectId userIdObj = new ObjectId(userId);
-
+        // TODO: move the check in the user array, since it will be shorter
         if(gameRepository.hasUserAlreadyReviewed(gameId, userIdObj)){
             throw new ResourceAlreadyExistsException("The user already reviewed this game");
         }
@@ -101,13 +101,14 @@ public class GameService {
 
         ReviewDTO recentReview = reviewMapper.reviewToRecentReviewDTO(savedReview);
 
-        OldReviewDTO oldReview = new OldReviewDTO(new ObjectId(recentReview.getId()),userIdObj);
+        OldGameReviewDTO oldReview = new OldGameReviewDTO(new ObjectId(recentReview.getId()),userIdObj);
 
         int modified = gameRepository.addReviewToGame(gameId,oldReview , recentReview, recentReview.getScore());
         if(modified != 1)
             throw new RuntimeException("An error has occurred when adding the review to the game");
     }
 
+    // TODO: manage the user review array
     @Transactional
     public void deleteReview(String reviewId) {
         Review deletedReview = reviewRepository.removeById(reviewId).orElseThrow(() -> new NoSuchElementException("The review provided does not exist"));
@@ -116,6 +117,7 @@ public class GameService {
         String requesterId = getAuthenticatedUserId();
         UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
+        // TODO, can we make this prettier? it kinda stinks
         boolean isAdmin = principal.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         if (!isAdmin && !deletedReview.getUserId().toHexString().equals(requesterId)) {
@@ -140,7 +142,7 @@ public class GameService {
 
         int startingIndex = startingReverseIndex - size + 1;
 
-        ReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,startingIndex,size);
+        GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,startingIndex,size);
 
         List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
                                     oldReviewDTO.getReviewId().toString()).toList();

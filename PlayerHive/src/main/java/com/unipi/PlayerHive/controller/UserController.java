@@ -98,4 +98,10 @@ public class UserController {
         return ResponseEntity.ok("Friend removed successfully");
     }
 
+    @DeleteMapping("/deleteAccount")
+    public  ResponseEntity<String> deleteAccount(){
+        userService.deleteUser("I CANT FIGURE OUT HOW TO GET THE ID FROM THE TOKEN"); // TODO
+        return ResponseEntity.ok("Account Deleted successfully");
+    }
+
 }

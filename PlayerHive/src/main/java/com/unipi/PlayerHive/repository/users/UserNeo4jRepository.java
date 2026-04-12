@@ -11,6 +11,7 @@ import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Repository
 public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
@@ -46,6 +47,10 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
             "SKIP $skip LIMIT $limit",
             countQuery = "MATCH (u1:User {id: $userId})-[r:FRIENDS_WITH]->(u2:User) RETURN count(u2)")
     Page<FriendDTO> findUsersFriends(String userId, Pageable pageable);
+
+    @Query("MATCH (u1:User {id: $userId})-[r:FRIENDS_WITH]->(u2:User) " +
+            " RETURN u2.id as id")
+    Stream<String> findUsersFriendStream(String userId);
 
     @Query("MATCH (u1:User {id: $userId})-[r:FRIENDS_WITH]-(u2:User {id: $friendId}) " +
             "DELETE r " +

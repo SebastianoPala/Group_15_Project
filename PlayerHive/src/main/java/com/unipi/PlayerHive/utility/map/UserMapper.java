@@ -1,4 +1,4 @@
-package com.unipi.PlayerHive.utility;
+package com.unipi.PlayerHive.utility.map;
 
 import com.unipi.PlayerHive.DTO.users.OwnProfileDTO;
 import com.unipi.PlayerHive.DTO.users.ProfileDTO;

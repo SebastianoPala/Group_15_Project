@@ -1,15 +1,17 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
-import com.unipi.PlayerHive.DTO.games.LightGameDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.User;
+import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.model.UserPrincipal;
-import com.unipi.PlayerHive.utility.UserMapper;
+import com.unipi.PlayerHive.utility.batch.GameConsistencyManager;
+import com.unipi.PlayerHive.utility.batch.UserConsistencyManager;
+import com.unipi.PlayerHive.utility.map.UserMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 public class UserService {
@@ -31,12 +35,17 @@ public class UserService {
     private final UserNeo4jRepository userNeo4jRepository;
     private final GameRepository gameRepository;
     private final UserMapper userMapper;
+    private final MongoTemplate mongoTemplate;
 
-    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository, GameRepository gameRepository, UserMapper userMapper) {
+    private final ReviewRepository reviewRepository;
+
+    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository, GameRepository gameRepository, UserMapper userMapper, MongoTemplate mongoTemplate, ReviewRepository reviewRepository) {
         this.userRepository = userRepository;
         this.userNeo4jRepository = userNeo4jRepository;
         this.gameRepository = gameRepository;
         this.userMapper = userMapper;
+        this.mongoTemplate = mongoTemplate;
+        this.reviewRepository = reviewRepository;
     }
 
     // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out :)
@@ -103,10 +112,10 @@ public class UserService {
         Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, gameId)
                 .orElseThrow(() -> new NoSuchElementException("The game specified is not present in the user's library"));
 
-        // DO I just assume mongodb and neo4j data are synchronized?
-        //game.setNumPlayers(game.getNumPlayers() -1 ); // TODO REMOVE
+        //  TODO: when do we update the game stats? i think that a single query that updates every game is better
+        //game.setNumPlayers(game.getNumPlayers() -1 );
 
-        //game.setTotalHoursPlayed(game.getTotalHoursPlayed() - userGamePlaytime.floatValue()); // TODO REMOVE
+        //game.setTotalHoursPlayed(game.getTotalHoursPlayed() - userGamePlaytime.floatValue());
         int modified = userRepository.updateUserStats(userId, -userGamePlaytime.floatValue(),-1);
         if(modified<=0)
             throw new RuntimeException("The server was unable to decrease the player's gaming stats");
@@ -207,6 +216,42 @@ public class UserService {
         int result = userRepository.editFriendCounter(userId, -1);
         if(result != 1)
             throw new RuntimeException("The server was unable to decrease the friend counter");
+    }
+
+    // this function looks kinda heavy, probably better to delay its execution?
+    @Transactional
+    public void deleteUser(String userId){
+        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        String requesterId = principal.getUser().getId();
+         // TODO, can we make this prettier? it kinda stinks
+        boolean isAdmin = principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if(!isAdmin && !requesterId.equals(userId)){
+            throw new RuntimeException("You can't delete another user's profile"); //TODO ADD NEW EXCEPTION TYPE
+        }
+
+        UserConsistencyManager userManager = new UserConsistencyManager(mongoTemplate);
+        GameConsistencyManager gameManager = new GameConsistencyManager(mongoTemplate);
+
+        // we obtain all the friends in a stream for easy access
+        Stream<String> friendStream = userNeo4jRepository.findUsersFriendStream(userId);
+
+        // decrements the "friend" value of every user found in the previous query
+        userManager.adjustFriendCountersAfterUserRemoval(friendStream.iterator(), userRepository);
+        friendStream.close();
+
+        // deletes all user's reviews
+        reviewRepository.removeByUserId(userId);
+
+        // we remove the user's reviews from every single game
+        gameManager.removeUserReviewsFromGames(userId,userRepository);
+
+        // TODO: now that we removed reviews, the games score should be updated. Manage this!! DONT DO IT IN THIS FUNCTION THO
+
+        userNeo4jRepository.deleteById(userId);
+        userRepository.deleteById(userId);
+
     }
 
 }

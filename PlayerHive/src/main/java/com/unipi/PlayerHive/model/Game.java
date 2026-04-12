@@ -1,7 +1,7 @@
 package com.unipi.PlayerHive.model;
 
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.OldReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,7 +32,7 @@ public class Game {
     private String description;
 
     private List<ReviewDTO> recentReviews;
-    private List<OldReviewDTO> allReviews;
+    private List<OldGameReviewDTO> allReviews;
 
     @Field("image")
     private String imageURL;
