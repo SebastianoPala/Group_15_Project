@@ -2,9 +2,9 @@ package com.unipi.PlayerHive.repository.games;
 
 import com.unipi.PlayerHive.DTO.games.GameSearchDTO;
 import com.unipi.PlayerHive.DTO.games.LightGameDTO;
-import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.OldReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -39,7 +39,7 @@ public interface GameRepository extends MongoRepository<Game, String> {
             "    } " +
             "}, " +
             "'$inc' :{ 'countScore': 1, 'sumScore' : ?3} }")
-    int addReviewToGame(String gameId, OldReviewDTO oldReview, ReviewDTO recentReview, float score);
+    int addReviewToGame(String gameId, OldGameReviewDTO oldReview, ReviewDTO recentReview, float score);
 
     @Query(value = "{ '_id': ?0, 'allReviews.user_id': ?1 }", exists = true)
     boolean hasUserAlreadyReviewed(String gameId, ObjectId  userId);
@@ -64,5 +64,5 @@ public interface GameRepository extends MongoRepository<Game, String> {
             "{ '$match': { '_id': ?0 } }",
             "{ '$project': { 'reviews': { '$slice': ['$allReviews', ?1, ?2] } } }"
     })
-    ReviewContainerDTO getGameReviews(String gameId, int skip, int limit);
+    GameReviewContainerDTO getGameReviews(String gameId, int skip, int limit);
 }

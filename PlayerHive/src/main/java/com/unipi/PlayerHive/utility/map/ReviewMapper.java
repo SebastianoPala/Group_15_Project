@@ -1,4 +1,4 @@
-package com.unipi.PlayerHive.utility;
+package com.unipi.PlayerHive.utility.map;
 
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.model.Review;

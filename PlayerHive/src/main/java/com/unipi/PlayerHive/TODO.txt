@@ -6,9 +6,9 @@ GAMES AND USER SEARCH:
 
 USERS
     -in the profile DTO, do we need the friend request number if a user requests another user's profile????
-    -friend requests should be queried through the token's username
     -do we just send friend requests with my profile queries
     -add possibility to edit reviews?
+    -manage the new review array after user / game deletion
 
 GAMES
     -manage average hours played with deletions
@@ -19,6 +19,7 @@ GAMES
     - ^^^^^^^ probably better to just remove reviews based on review id, at the end of the day you click on a review before deleting it
     -manage slicing of reviews, especially recent ones
     -send numScore as an indicator of the number of reviews
+
 
 ADMINS
     -fix user libraries after deleting a game

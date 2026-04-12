@@ -12,12 +12,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Getter
 @Setter
 
-public class OldReviewDTO {
+public class UserReviewDTO {
 
     @Field("review_id")
     private ObjectId reviewId;
 
-    @Field("user_id")
-    private ObjectId userId;
+    @Field("game_id")
+    private ObjectId gameId;
 
 }
