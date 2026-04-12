@@ -35,8 +35,14 @@ public interface UserRepository extends MongoRepository<User,String> {
     int editFriendCounter(String userId, int quantity);
 
 
-
     @Query("{ '_id': ?0 }")
     @Update("{ '$inc': { 'hoursPlayed': ?1, 'numGames': ?2 } }")
     int updateUserStats(String userId, float playtimeDifference, int gameNumberToAdd);
+
+    User findByEmail(String email);
+
+    boolean existsByEmail(String email);
+    
+    boolean existsByUsername(String username);
+
 }

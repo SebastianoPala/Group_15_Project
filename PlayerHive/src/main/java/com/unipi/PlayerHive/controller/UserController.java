@@ -2,6 +2,7 @@ package com.unipi.PlayerHive.controller;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.users.*;
+import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,7 +32,10 @@ public class UserController {
 
     @GetMapping("/MyProfile")
     public ResponseEntity<OwnProfileDTO> showOwnProfile(){
-        return ResponseEntity.ok(userService.getOwnProfileById("efeacf7066b54bc983180329")); // the user is obtained by the token, TODO
+        // get the id from the token so this endpoint always returns YOUR profile :)
+        String userId = ((UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal()).getUser().getId();
+        return ResponseEntity.ok(userService.getOwnProfileById(userId));
     }
 
     @GetMapping("/library/{userId}")
