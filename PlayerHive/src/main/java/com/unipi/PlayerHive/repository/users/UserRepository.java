@@ -2,6 +2,7 @@ package com.unipi.PlayerHive.repository.users;
 
 import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.DTO.users.FriendRequestMongoDTO;
 import com.unipi.PlayerHive.DTO.users.UserSearchDTO;
 import com.unipi.PlayerHive.model.User;
@@ -55,8 +56,18 @@ public interface UserRepository extends MongoRepository<User,String> {
 
     @Aggregation(pipeline = {
             "{ '$match': { '_id': ?0 } }",
-            "{ '$project': { 'reviews': { '$slice': ['$FIELD_NAME!', ?1, ?2] } } }"
-    }) //TODO FIXXX
+            "{ '$project': { 'reviews': { '$slice': ['$reviewIds', ?1, ?2] } } }"
+    })
     UserReviewContainerDTO getUserReviews(String userId, int skip, int limit);
+
+    // push a new {reviewId, gameId} pair into the user's reviewIds array when they write a review
+    @Query("{ '_id': ?0 }")
+    @Update("{ '$push': { 'reviewIds': ?1 } }")
+    void addReviewToUser(String userId, UserReviewDTO review);
+
+    // pull the review entry out of reviewIds when the review is deleted
+    @Query("{ '_id': ?0 }")
+    @Update("{ '$pull': { 'reviewIds': { 'review_id': ?1 } } }")
+    void removeReviewFromUser(String userId, org.bson.types.ObjectId reviewId);
 
 }

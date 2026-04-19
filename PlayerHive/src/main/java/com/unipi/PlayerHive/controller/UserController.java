@@ -99,8 +99,11 @@ public class UserController {
     }
 
     @DeleteMapping("/deleteAccount")
-    public  ResponseEntity<String> deleteAccount(){
-        userService.deleteUser("I CANT FIGURE OUT HOW TO GET THE ID FROM THE TOKEN"); // TODO
+    public ResponseEntity<String> deleteAccount(){
+        // same pattern as MyProfile, pull the id from the token so we know whose account to delete
+        String userId = ((UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal()).getUser().getId();
+        userService.deleteUser(userId);
         return ResponseEntity.ok("Account Deleted successfully");
     }
 

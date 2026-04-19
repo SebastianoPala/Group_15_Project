@@ -5,6 +5,7 @@ import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.Review;
 import com.unipi.PlayerHive.model.User;
@@ -12,6 +13,7 @@ import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
+import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.utility.map.GameMapper;
 import com.unipi.PlayerHive.utility.map.ReviewMapper;
 import jakarta.transaction.Transactional;
@@ -35,15 +37,17 @@ public class GameService {
 
     private final ReviewRepository reviewRepository;
     private final ReviewMapper reviewMapper;
+    private final UserRepository userRepository;
 
     public GameService(GameRepository gameRepository,
-                       GameNeo4jRepository gameNeo4jRepository, GameMapper gameMapper, ReviewRepository reviewRepository, ReviewMapper reviewMapper
+                       GameNeo4jRepository gameNeo4jRepository, GameMapper gameMapper, ReviewRepository reviewRepository, ReviewMapper reviewMapper, UserRepository userRepository
     ){
         this.gameRepository = gameRepository;
         this.gameNeo4jRepository = gameNeo4jRepository;
         this.gameMapper = gameMapper;
         this.reviewRepository = reviewRepository;
         this.reviewMapper = reviewMapper;
+        this.userRepository = userRepository;
     }
 
     // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out
@@ -77,7 +81,6 @@ public class GameService {
         return searchResult;
     }
 
-    // TODO: manage the user review array
     @Transactional
     public void addReview(String gameId, AddReviewDTO addReviewDTO) {
         // pull the actual logged-in user from the token, no more hardcoded test data :0
@@ -106,9 +109,12 @@ public class GameService {
         int modified = gameRepository.addReviewToGame(gameId,oldReview , recentReview, recentReview.getScore());
         if(modified != 1)
             throw new RuntimeException("An error has occurred when adding the review to the game");
+
+        // keep a lightweight {reviewId, gameId} entry on the user so we can clean up their reviews if they ever get deleted
+        UserReviewDTO userReview = new UserReviewDTO(new ObjectId(savedReview.getId()), new ObjectId(gameId));
+        userRepository.addReviewToUser(userId, userReview);
     }
 
-    // TODO: manage the user review array
     @Transactional
     public void deleteReview(String reviewId) {
         Review deletedReview = reviewRepository.removeById(reviewId).orElseThrow(() -> new NoSuchElementException("The review provided does not exist"));
@@ -127,6 +133,9 @@ public class GameService {
         int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
         if(modified != 1)
             throw new RuntimeException("The server couldn't delete the review due to inconsistencies");
+
+        // clean the entry out of the user's reviewIds array too
+        userRepository.removeReviewFromUser(requesterId, new ObjectId(reviewId));
 
     }
 

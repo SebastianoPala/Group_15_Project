@@ -52,9 +52,9 @@ public class AuthService {
         newUser.setNumGames(0);
         newUser.setHoursPlayed(0);
         newUser.setFriends(0);
-        userRepository.save(newUser);
+        userRepository.save(newUser); // add the id reutrned from here to neo4j not custom id
 
-        // Neo4j needs its own node for the user, without this friend and library operations would silently break :)
+        // Neo4j needs its own node for the user without this, friend and library operations would silently break
         UserNeo4j neo4jUser = new UserNeo4j();
         neo4jUser.setId(userId);
         neo4jUser.setUsername(dto.username());

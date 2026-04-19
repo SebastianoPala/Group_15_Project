@@ -75,7 +75,7 @@ public record UserConsistencyManager(MongoTemplate mongoTemplate) {
             for (OldGameReviewDTO review : reviews) {
                 Query query = new Query(Criteria.where("_id").is(review.getUserId()));
 
-                Update update = new Update().pull("INSERT_ARRAY_NAME", review.getReviewId());
+                Update update = new Update().pull("reviewIds", review.getReviewId());
 
                 bulkOps.updateOne(query, update);
             }
