@@ -3,6 +3,8 @@ package com.unipi.PlayerHive.repository.users;
 import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
+import com.unipi.PlayerHive.DTO.users.FriendRequestContainerDTO;
+import com.unipi.PlayerHive.DTO.users.FriendRequestDTO;
 import com.unipi.PlayerHive.DTO.users.FriendRequestMongoDTO;
 import com.unipi.PlayerHive.DTO.users.UserSearchDTO;
 import com.unipi.PlayerHive.model.User;
@@ -36,6 +38,15 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$pull' : { 'friendRequests' : { 'user_id' : ?1 } } }")
     int removeFriendRequest(String userId, String userToRemove);
 
+    @Aggregation(pipeline = {
+            "{ '$match' : { '_id' : ?0 } }",
+            "{ '$project' : { 'count' : { '$size': '$friendRequests' } } }"
+    })
+    int getFriendRequestsNumber(String userId);
+
+    @Query(value = "{ '_id' : ?0 }", fields = "{ 'friendRequests' : 1 }")
+    FriendRequestContainerDTO findFriendRequestsById(String id);
+
     @Query("{ '_id' : ?0 }")
     @Update("{ '$inc' : { 'friends' : ?1 } }")
     int editFriendCounter(String userId, int quantity);
@@ -48,11 +59,10 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$inc': { 'hoursPlayed': ?1, 'numGames': ?2 } }")
     int updateUserStats(String userId, float playtimeDifference, int gameNumberToAdd);
 
-    // only fetch the 5 fields the principal actually uses, skips friendRequests, reviewIds arrays
-    @Query(value = "{ 'email': ?0 }", fields = "{ 'username': 1, 'password': 1, 'role': 1, 'pfpURL': 1 }")
+    @Query(value = "{ 'email': ?0 }", fields = "{ 'friendRequests': 0, 'reviewIds':0 }")
     User findByEmail(String email);
 
-    @Query(value = "{ '_id': ?0 }", fields = "{ 'username': 1, 'password': 1, 'role': 1, 'pfpURL': 1 }")
+    @Query(value = "{ '_id': ?0 }",  fields = "{ 'friendRequests': 0, 'reviewIds':0 }")
     User findByIdLean(String id);
 
     boolean existsByEmail(String email);

@@ -1,6 +1,7 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
+import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.User;
@@ -24,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -49,10 +51,10 @@ public class UserService {
     }
 
     // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out :)
-    private String getAuthenticatedUserId() {
+    private User getAuthenticatedUser() {
         return ((UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal())
-                .getUser().getId();
+                .getUser();
     }
 
     public ProfileDTO getProfileById(String userId) {
@@ -60,12 +62,13 @@ public class UserService {
         return userMapper.userToProfileDTO(user);
     }
 
-    public OwnProfileDTO getOwnProfileById(String userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
+    public OwnProfileDTO getOwnProfileById() {
+
+        User user = getAuthenticatedUser();
 
         OwnProfileDTO ownProfile = userMapper.userToOwnProfileDTO(user);
 
-        ownProfile.setFriendRequestsNumber(user.getFriendRequests().size()); // todo ponder if we just send the friend requests and that's it
+        ownProfile.setFriendRequestsNumber(userRepository.getFriendRequestsNumber(user.getId()));
 
         return ownProfile;
     }
@@ -77,7 +80,7 @@ public class UserService {
 
     @Transactional
     public void editLibrary(@Valid AddGameToLibraryDTO addGame) {
-        String userId = getAuthenticatedUserId();
+        String userId = getAuthenticatedUser().getId();
 
         Optional<Double> userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, addGame.getGameId());
 
@@ -107,7 +110,7 @@ public class UserService {
 
     @Transactional
     public void removeGameFromLibrary(String gameId) {
-        String userId = getAuthenticatedUserId();
+        String userId = getAuthenticatedUser().getId();
 
         Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, gameId)
                 .orElseThrow(() -> new NoSuchElementException("The game specified is not present in the user's library"));
@@ -131,28 +134,23 @@ public class UserService {
     }
 
     public List<FriendRequestDTO> getFriendRequests() {
-        String userId = getAuthenticatedUserId();
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("User not found"));
-        return user.getFriendRequests();
+        String userId = getAuthenticatedUser().getId();
+
+        FriendRequestContainerDTO friendRequestContainer = userRepository.findFriendRequestsById(userId);
+
+        return friendRequestContainer.getFriendRequests();
     }
 
     public Slice<UserSearchDTO> searchUser(String username, int page, int size) {
         Pageable pageable = PageRequest.of(page,size);
 
-        Slice<UserSearchDTO> searchResult = userRepository.searchByUsernameContaining(username, pageable);
-
-        if(searchResult.isEmpty()) // do we have to throw the exception?
-            throw new NoSuchElementException("No user matches the search parameters");
-
-        return searchResult;
+        return userRepository.searchByUsernameContaining(username, pageable);
     }
 
     @Transactional
     public String sendRequestToUser(String targetUserId) {
 
-        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal();
-        User user = principal.getUser();
+        User user = getAuthenticatedUser();
         String userId = user.getId();
 
         if(userId.equalsIgnoreCase(targetUserId)){
@@ -179,7 +177,7 @@ public class UserService {
 
     @Transactional
     public void approveRequestFromUser(String targetUserId) {
-        String userId = getAuthenticatedUserId();
+        String userId = getAuthenticatedUser().getId();
 
         int result = userRepository.acceptFriendRequest(userId,targetUserId);
         if(result != 1)
@@ -196,7 +194,7 @@ public class UserService {
     }
 
     public void removeRequestFromUser(String targetUserId) {
-        String userId = getAuthenticatedUserId();
+        String userId = getAuthenticatedUser().getId();
         //if(!userRepository.existsById(userId)) if the user does not exist, the request will simply not be present
         // ...
         int result = userRepository.removeFriendRequest(userId,targetUserId);
@@ -206,7 +204,7 @@ public class UserService {
 
     @Transactional
     public void removeFriend(String friendId) {
-        String userId = getAuthenticatedUserId();
+        String userId = getAuthenticatedUser().getId();
 
         boolean success = userNeo4jRepository.removeFriendById(userId,friendId);
         if(!success){

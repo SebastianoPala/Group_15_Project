@@ -26,16 +26,19 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<ProfileDTO> showUserProfile(@PathVariable String userId){
-        return ResponseEntity.ok(userService.getProfileById(userId));
+    public ResponseEntity<?> showUserProfile(@PathVariable String userId){
+        String currentUserId = ((UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal()).getUser().getId();
+        System.out.println("request from " + currentUserId);
+        if(userId.equals(currentUserId))
+            return ResponseEntity.ok(userService.getOwnProfileById());
+        else
+            return ResponseEntity.ok(userService.getProfileById(userId));
     }
 
     @GetMapping("/MyProfile")
     public ResponseEntity<OwnProfileDTO> showOwnProfile(){
-        // get the id from the token so this endpoint always returns YOUR profile :)
-        String userId = ((UserPrincipal) SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal()).getUser().getId();
-        return ResponseEntity.ok(userService.getOwnProfileById(userId));
+        return ResponseEntity.ok(userService.getOwnProfileById());
     }
 
     @GetMapping("/library/{userId}")

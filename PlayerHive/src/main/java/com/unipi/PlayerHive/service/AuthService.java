@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Service
@@ -40,10 +41,10 @@ public class AuthService {
             throw new IllegalArgumentException("Email already exists");
 
         // generate the id once so we can reuse it for the Neo4j node below
-        String userId = UUID.randomUUID().toString();
+        //String userId = UUID.randomUUID().toString();
 
         User newUser = new User();
-        newUser.setId(userId);
+        //newUser.setId(userId);
         newUser.setUsername(dto.username());
         newUser.setPassword(encoder.encode(dto.password()));
         newUser.setEmail(dto.email());
@@ -52,11 +53,13 @@ public class AuthService {
         newUser.setNumGames(0);
         newUser.setHoursPlayed(0);
         newUser.setFriends(0);
-        userRepository.save(newUser); // add the id reutrned from here to neo4j not custom id
+        newUser.setFriendRequests(new ArrayList<>());
+        newUser.setReviewIds(new ArrayList<>());
+        User savedUser = userRepository.save(newUser);
 
         // Neo4j needs its own node for the user without this, friend and library operations would silently break
         UserNeo4j neo4jUser = new UserNeo4j();
-        neo4jUser.setId(userId);
+        neo4jUser.setId(savedUser.getId());
         neo4jUser.setUsername(dto.username());
         userNeo4jRepository.save(neo4jUser);
     }

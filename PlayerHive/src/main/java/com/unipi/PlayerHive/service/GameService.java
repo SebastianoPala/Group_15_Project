@@ -25,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -51,10 +52,10 @@ public class GameService {
     }
 
     // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out
-    private String getAuthenticatedUserId() {
+    private User getAuthenticatedUser() {
         return ((UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal())
-                .getUser().getId();
+                .getUser();
     }
 
     public GameInfoDTO getGameById(String gameId) { // manage high reviews number case
@@ -73,26 +74,20 @@ public class GameService {
 
     public Slice<GameSearchDTO> searchGameByName(String gameName, int page, int size) {
         Pageable pageable = PageRequest.of(page,size);
-        Slice<GameSearchDTO> searchResult = gameRepository.searchByNameContaining(gameName, pageable);
 
-        if(searchResult.isEmpty()) // do we have to throw an exception?
-            throw new NoSuchElementException("No games matching the search parameters were found");
-
-        return searchResult;
+        return gameRepository.searchByNameContaining(gameName, pageable);
     }
 
     @Transactional
     public void addReview(String gameId, AddReviewDTO addReviewDTO) {
-        // pull the actual logged-in user from the token, no more hardcoded test data :0
-        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal();
-        User user = principal.getUser();
+
+        User user = getAuthenticatedUser();
         String userId = user.getId();
         String userPFPurl = user.getPfpURL();
         String username = user.getUsername();
 
         ObjectId userIdObj = new ObjectId(userId);
-        // TODO: move the check in the user array, since it will be shorter
+
         if(gameRepository.hasUserAlreadyReviewed(gameId, userIdObj)){
             throw new ResourceAlreadyExistsException("The user already reviewed this game");
         }
@@ -117,36 +112,47 @@ public class GameService {
 
     @Transactional
     public void deleteReview(String reviewId) {
-        Review deletedReview = reviewRepository.removeById(reviewId).orElseThrow(() -> new NoSuchElementException("The review provided does not exist"));
 
         // only the review author or an admin can delete this, anyone else gets rejected :/
-        String requesterId = getAuthenticatedUserId();
+        String requesterId = getAuthenticatedUser().getId();
+        Review deletedReview = null;
+
         UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
-        // TODO, can we make this prettier? it kinda stinks
+
         boolean isAdmin = principal.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (!isAdmin && !deletedReview.getUserId().toHexString().equals(requesterId)) {
-            throw new IllegalArgumentException("You can only delete your own reviews");
-        }
 
+        if(isAdmin)
+            deletedReview = reviewRepository.removeById(reviewId);
+        else
+            deletedReview = reviewRepository.removeByIdAndUserId(reviewId,requesterId);
+
+        if (deletedReview == null) {
+            if(!isAdmin)
+                throw new IllegalArgumentException("You can only delete your own reviews");
+            else
+                throw new NoSuchElementException("The review does not exist");
+        }
+         // todo DO WE INSTANTLY REMOVE THE REVIEW FROM THE GAME?
         int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
         if(modified != 1)
             throw new RuntimeException("The server couldn't delete the review due to inconsistencies");
 
         // clean the entry out of the user's reviewIds array too
-        userRepository.removeReviewFromUser(requesterId, new ObjectId(reviewId));
-
+        if(!isAdmin)
+            userRepository.removeReviewFromUser(requesterId, new ObjectId(reviewId));
     }
 
     public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
-    // IMPORTANT TO RETURN THE REVIEW ID TO ALLOW FOR DELETE
+
         int reviewNumber = gameRepository.getReviewNumber(gameId);
+
+        if(reviewNumber == 0)
+            return new ArrayList<>();
 
         int startingReverseIndex = reviewNumber - page*size - 1;
 
-        if(startingReverseIndex < 0)
-            throw new NoSuchElementException("No reviews have been found at page: "+ page+", size: "+size); // todo maybe we should return 200 anyways?
         size = (startingReverseIndex + 1 - size < 0) ? startingReverseIndex + 1 : size;
 
         int startingIndex = startingReverseIndex - size + 1;

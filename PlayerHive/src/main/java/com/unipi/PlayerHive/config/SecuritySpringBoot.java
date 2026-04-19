@@ -34,6 +34,9 @@ public class SecuritySpringBoot {
             .authorizeHttpRequests(request -> request
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/games/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/user/MyProfile").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/user/friendRequests").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/user/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()) // any logged-in user gets through, admin-only routes are already locked above
             .sessionManagement(session -> session

@@ -11,11 +11,13 @@ import java.util.Optional;
 @Repository
 public interface ReviewRepository extends MongoRepository<Review, String> {
 
-    Optional<Review> removeById(String reviewId);
+    Review removeById(String reviewId);
 
     List<ReviewDTO> findByIdInOrderByTimestampDesc(List<String> reviewIds);
 
     void removeByGameId(String gameId);
 
     void removeByUserId(String userId);
+
+    Review removeByIdAndUserId(String reviewId, String requesterId);
 }

@@ -139,8 +139,6 @@ public class AdminService {
         //all reviews are now deleted
         reviewRepository.removeByGameId(gameId);
 
-
-
         //the game node in neo4j is removed
         gameNeo4jRepository.deleteById(gameId);
 
