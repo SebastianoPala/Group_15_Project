@@ -48,7 +48,12 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$inc': { 'hoursPlayed': ?1, 'numGames': ?2 } }")
     int updateUserStats(String userId, float playtimeDifference, int gameNumberToAdd);
 
+    // only fetch the 5 fields the principal actually uses, skips friendRequests, reviewIds arrays
+    @Query(value = "{ 'email': ?0 }", fields = "{ 'username': 1, 'password': 1, 'role': 1, 'pfpURL': 1 }")
     User findByEmail(String email);
+
+    @Query(value = "{ '_id': ?0 }", fields = "{ 'username': 1, 'password': 1, 'role': 1, 'pfpURL': 1 }")
+    User findByIdLean(String id);
 
     boolean existsByEmail(String email);
     

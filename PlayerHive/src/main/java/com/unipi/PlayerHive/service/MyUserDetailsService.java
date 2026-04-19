@@ -28,7 +28,8 @@ public class MyUserDetailsService implements UserDetailsService {
     }
 
     public User loadUserById(String id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("User not found: " + id));
+        User user = userRepository.findByIdLean(id);
+        if (user == null) throw new NoSuchElementException("User not found: " + id);
+        return user;
     }
 }
