@@ -138,6 +138,11 @@ def upload_to_mongodb(games_data, users_data, all_reviews_data):
         for req in u_copy.get("friendRequests", []):
             req["user_id"] = ObjectId(req["user_id"])
             
+        # Converte i campi di reviewIds in ObjectId
+        for rev in u_copy.get("reviewIds", []):
+            rev["review_id"] = ObjectId(rev["review_id"])
+            rev["game_id"] = ObjectId(rev["game_id"])
+            
         mongo_users.append(u_copy)
         
     mongo_reviews = []
@@ -233,7 +238,8 @@ def main():
             "friends": 0,
             "numGames": 0,
             "hoursPlayed": 0.0,
-            "pfpURL": f"/Playerhive/pfp/{uuid.uuid4().hex}"
+            "pfpURL": f"/Playerhive/pfp/{uuid.uuid4().hex}",
+            "reviewIds": []
         })
         if (i + 1) % 1000 == 0 or (i + 1) == NUM_USERS:
             print(f"   -> Generated {i + 1}/{NUM_USERS} users...", end='\r')
@@ -256,6 +262,8 @@ def main():
     for i, user in enumerate(users_list):
         # Raddoppiato il numero massimo di recensioni per utente (da 20 a 40)
         M = random.randint(0, 40)
+        user_reviews_temp = []
+        
         for _ in range(M):
             game = random.choice(games_list)
             review_doc = {
@@ -270,6 +278,17 @@ def main():
             }
             game["raw_reviews"].append(review_doc)
             all_global_reviews.append(review_doc)
+            user_reviews_temp.append(review_doc)
+            
+        # Ordina cronologicamente (dalla più vecchia alla più recente) e crea array per il record user
+        user_reviews_temp.sort(key=lambda x: x["timestamp"])
+        user["reviewIds"] = [
+            {
+                "review_id": r["_id"]["$oid"],
+                "game_id": r["game_id"]
+            }
+            for r in user_reviews_temp
+        ]
             
         if (i + 1) % 1000 == 0 or (i + 1) == len(users_list):
             print(f"   -> Assigned reviews for {i + 1}/{len(users_list)} users...", end='\r')
