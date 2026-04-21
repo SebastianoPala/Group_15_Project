@@ -34,7 +34,7 @@ public class SecuritySpringBoot {
             .authorizeHttpRequests(request -> request
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/games/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/user/MyProfile").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/user/My*").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/user/friendRequests").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/user/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -52,6 +52,6 @@ public class SecuritySpringBoot {
 
     @Bean
     public PasswordEncoder passwordEncoder(){
-        return new BCryptPasswordEncoder(12);
-    }
+        return new BCryptPasswordEncoder(4);
+    } //TODO lowered from 12 to 4 for speeding up db population
 }

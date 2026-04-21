@@ -41,9 +41,6 @@ public interface GameRepository extends MongoRepository<Game, String> {
             "'$inc' :{ 'countScore': 1, 'sumScore' : ?3} }")
     int addReviewToGame(String gameId, OldGameReviewDTO oldReview, ReviewDTO recentReview, float score);
 
-    @Query(value = "{ '_id': ?0, 'allReviews.user_id': ?1 }", exists = true)
-    boolean hasUserAlreadyReviewed(String gameId, ObjectId  userId);
-
     @Query("{ '_id': ?0, 'allReviews.review_id': ObjectId(?1) }") // todo fix
     @Update("{" +
             "  '$inc': { 'countScore': -1, 'sumScore': ?2 }," +

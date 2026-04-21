@@ -14,10 +14,14 @@ import com.unipi.PlayerHive.utility.map.GameMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.beans.FeatureDescriptor;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
@@ -37,6 +41,19 @@ public class AdminService {
         this.gameMapper = gameMapper;
         this.mongoTemplate = mongoTemplate;
         this.reviewRepository = reviewRepository;
+    }
+
+    // This function copies all the non-null fields from source to target, and only matches fields with the same name
+    public static void copyNonNullProperties(Object source, Object target) {
+        BeanUtils.copyProperties(source, target, getNullPropertyNames(source));
+    }
+
+    private static String[] getNullPropertyNames (Object source) {
+        final BeanWrapper src = new BeanWrapperImpl(source);
+        return Stream.of(src.getPropertyDescriptors())
+                .map(FeatureDescriptor::getName)
+                .filter(name -> src.getPropertyValue(name) == null)
+                .toArray(String[]::new);
     }
 
     @Transactional
@@ -65,55 +82,16 @@ public class AdminService {
     public void editGame(String gameId, @Nonnull @Valid @RequestBody EditGameDTO editGame) {
 
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new NoSuchElementException("The Game with id:\"" + gameId + "\" does not exist"));
-        // is there a better way??
-        if (!game.getName().equals(editGame.getName())) { // avoids throwing an exception if I modify the game name to itself
-            if(gameRepository.existsByName(editGame.getName()))
-                throw new ResourceAlreadyExistsException("Game "+ editGame.getName() +" already exists");
-            game.setName(editGame.getName());
-        }
-        if (editGame.getReleaseDate() != null) {
-            game.setReleaseDate(editGame.getReleaseDate());
-        }
-        if (editGame.getPrice() != null) {
-            game.setPrice(editGame.getPrice());
-        }
-        if (editGame.getDiscount() != null) {
-            game.setDiscount(editGame.getDiscount());
-        }
-        if (editGame.getDescription() != null) {
-            game.setDescription(editGame.getDescription());
-        }
-        if (editGame.getImageURL() != null) {
-            game.setImageURL(editGame.getImageURL());
-        }
-        if (editGame.getSupportedOS() != null) {
-            game.setSupportedOS(editGame.getSupportedOS());
-        }
-        if (editGame.getAchievements() != null) {
-            game.setAchievements(editGame.getAchievements());
-        }
-        if (editGame.getDevelopers() != null) {
-            game.setDevelopers(editGame.getDevelopers());
-        }
-        if (editGame.getPublishers() != null) {
-            game.setPublishers(editGame.getPublishers());
-        }
-        if (editGame.getGenres() != null) {
-            game.setGenres(editGame.getGenres());
+
+        copyNonNullProperties(editGame,game);
+        if (!game.getName().equals(editGame.getName()) && gameRepository.existsByName(editGame.getName())) { // avoids throwing an exception if I modify the game name to itself
+            throw new ResourceAlreadyExistsException("Game "+ editGame.getName() +" already exists");
         }
 
         gameRepository.save(game);
         GameNeo4j gameNeo = gameNeo4jRepository.findById(gameId).orElseThrow(() -> new NoSuchElementException("Game not found on Neo4j"));
 
-        if (editGame.getName() != null) {
-            gameNeo.setName(editGame.getName());
-        }
-        if (editGame.getImageURL() != null) {
-            gameNeo.setImage(editGame.getImageURL());
-        }
-        if (editGame.getAchievements() != null) {
-            gameNeo.setAchievements(editGame.getAchievements());
-        }
+        copyNonNullProperties(editGame,gameNeo);
 
         gameNeo4jRepository.save(gameNeo);
     }
@@ -131,6 +109,8 @@ public class AdminService {
         //the user consistency manager requires mongoTemplate for batch operation
         UserConsistencyManager userManager = new UserConsistencyManager(mongoTemplate);
 
+        //todo: this operation is super heavy, but games are basically never deleted, especially popular ones
+        //todo: if we do not perform the user update here, it makes the user related queries heavier
         //all users "hoursPlayed" and "numGames" are decreased accordingly
         userManager.adjustUserStatsAfterGameRemoval(allOwners.iterator());
 

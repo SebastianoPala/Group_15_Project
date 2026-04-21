@@ -1,8 +1,0 @@
-put games.json, reviews.csv in the folder.
-run convert.py and obtain cleaned_games.json
-run generate users.py and obtain users.json
-load users into mongodb and export it again obtaining PlayerHive.users.json (for the id)
-then run create_reviews.py and obtain updated_games_with_reviews.json and load it in the games collection in mongodb
-extract the game.json again to obtain the ids
-run the create_graph_nodes.py
-run the create_game_collections.py

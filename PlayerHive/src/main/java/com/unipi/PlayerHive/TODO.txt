@@ -1,24 +1,18 @@
 REVIEWS:
-    Maybe add a review service? is it worth?
+    - Remove user id from games reviews? only useful for game deletion and NOTHING ELSE
 
 GAMES AND USER SEARCH:
     NOTHING
 
 USERS
-    -in the profile DTO, do we need the friend request number if a user requests another user's profile????
-    -do we just send friend requests with my profile queries
     -add possibility to edit reviews?
     -manage the new review array after user / game deletion
+    -all users now share the same email domain for ease of access, fix and put random emails and use username for access, probably allows us to use indexes better
 
 GAMES
     -manage average hours played with deletions
     -manage average scores with deletions
     -update game later after getting added to a library
-    -decide if we are sending the first 25 embedded reviews with the gameinfo query? prolly a good idea
-    - FIX REVIEWS SORTING, also add userId to "allReviews" allowing trivial delete?
-    - ^^^^^^^ probably better to just remove reviews based on review id, at the end of the day you click on a review before deleting it
-    -manage slicing of reviews, especially recent ones
-    -send numScore as an indicator of the number of reviews
 
 
 ADMINS
@@ -28,9 +22,6 @@ ADMINS
 GENERAL
     -add all controls to inserts and edits
     - add transactions
-    -check if we can return List<> or if we need to return a class containing one
-IDEAS
-    NOTHING
 
 AI SECTION
     -writing boilerplate

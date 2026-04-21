@@ -5,6 +5,7 @@ import sys
 import hashlib
 import uuid
 from datetime import datetime, timedelta
+import bcrypt
 from faker import Faker
 from neo4j import GraphDatabase
 from pymongo import MongoClient
@@ -18,8 +19,26 @@ MONGO_URI = "mongodb://localhost:27017/"
 MONGO_DB_NAME = "PlayerHive"
 
 NUM_USERS = 10000            # Number of users to generate
+NUM_ROUNDS = 4
+
 
 fake = Faker()
+
+
+admin_user = {
+    "_id": {"$oid": uuid.uuid4().hex[:24]},
+    "username": "admin",
+    "password": bcrypt.hashpw("admin".encode('utf-8'), bcrypt.gensalt(rounds=NUM_ROUNDS)).decode('utf-8'),
+    "email": "admin@admin.com",
+    "birthdate": datetime(1776, 12, 4), 
+    "role": "ADMIN",
+    "friendRequests": [],
+    "friends": 0,
+    "numGames": 0,
+    "hoursPlayed": 0.0,
+    "pfpURL": f"/Playerhive/pfp/{uuid.uuid4().hex}",
+    "reviewIds": []
+}
 
 # Remove CSV field size limits to prevent errors with large text blocks
 maxInt = sys.maxsize
@@ -227,11 +246,12 @@ def main():
         birthdate_raw = fake.date_of_birth(minimum_age=15)
         birthdate_dt = datetime(birthdate_raw.year, birthdate_raw.month, birthdate_raw.day)
         
+        # fix the hotmail stuff
         users_list.append({
             "_id": {"$oid": generate_oid()},
             "username": username,
-            "password": hashlib.sha256(username.encode('utf-8')).hexdigest(),
-            "email": fake.unique.email(),
+            "password": bcrypt.hashpw(username.encode('utf-8'), bcrypt.gensalt(rounds=NUM_ROUNDS)).decode('utf-8'),
+            "email": username + "@hotmail.com",
             "birthdate": birthdate_dt, 
             "role": "USER",
             "friendRequests": [],
@@ -241,8 +261,12 @@ def main():
             "pfpURL": f"/Playerhive/pfp/{uuid.uuid4().hex}",
             "reviewIds": []
         })
-        if (i + 1) % 1000 == 0 or (i + 1) == NUM_USERS:
+        if (i + 1) % 1000 == 0:
             print(f"   -> Generated {i + 1}/{NUM_USERS} users...", end='\r')
+    print(f"   -> Generated {NUM_USERS}/{NUM_USERS} users...", end='\r')
+    print()
+    print("Adding the admin account...")
+    users_list.append(admin_user)
     print()
 
     # 3. ASSIGN REVIEWS
@@ -425,6 +449,13 @@ def main():
     print()
 
     friend_rels = [{"id1": list(pair)[0], "id2": list(pair)[1]} for pair in established_friendships]
+
+    # sorting friend requests
+    print("   -> Sorting friend requests chronologically...")
+    for user in users_list:
+        if user["friendRequests"]:
+            user["friendRequests"].sort(key=lambda x: x["timestamp"])
+            
 
     # 6. NEO4J UPLOAD
     print("\n6. Connecting to Neo4j to upload Graph Database...")

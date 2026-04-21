@@ -14,6 +14,7 @@ import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
+import com.unipi.PlayerHive.utility.ArrayPager;
 import com.unipi.PlayerHive.utility.map.GameMapper;
 import com.unipi.PlayerHive.utility.map.ReviewMapper;
 import jakarta.transaction.Transactional;
@@ -83,16 +84,15 @@ public class GameService {
 
         User user = getAuthenticatedUser();
         String userId = user.getId();
-        String userPFPurl = user.getPfpURL();
-        String username = user.getUsername();
 
         ObjectId userIdObj = new ObjectId(userId);
+        ObjectId gameIdObj = new ObjectId(gameId);
 
-        if(gameRepository.hasUserAlreadyReviewed(gameId, userIdObj)){
+        if(userRepository.hasUserAlreadyReviewed(userId, gameIdObj)){
             throw new ResourceAlreadyExistsException("The user already reviewed this game");
         }
 
-        Review review = new Review(null,new ObjectId(gameId),userIdObj,username,userPFPurl,
+        Review review = new Review(null,new ObjectId(gameId),userIdObj,user.getUsername(),user.getPfpURL(),
                                             addReviewDTO.getReviewText(), addReviewDTO.getScore(), LocalDateTime.now());
 
         Review savedReview = reviewRepository.save(review);
@@ -114,19 +114,22 @@ public class GameService {
     public void deleteReview(String reviewId) {
 
         // only the review author or an admin can delete this, anyone else gets rejected :/
-        String requesterId = getAuthenticatedUser().getId();
-        Review deletedReview = null;
+        User requestingUser = getAuthenticatedUser();
+        Review deletedReview;
 
-        UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal();
+        // this "thing" is useful in case of users with multiple roles, so for our project is just overhead and unreadable </3
+        //boolean isAdmin = principal.getAuthorities().stream()
+        //        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
-        boolean isAdmin = principal.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        // gemini also recommended this ugly thing:
+        // boolean isAdmin = principal.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+
+        boolean isAdmin = requestingUser.getRole().equalsIgnoreCase("ADMIN");
 
         if(isAdmin)
             deletedReview = reviewRepository.removeById(reviewId);
         else
-            deletedReview = reviewRepository.removeByIdAndUserId(reviewId,requesterId);
+            deletedReview = reviewRepository.removeByIdAndUserId(reviewId,requestingUser.getId());
 
         if (deletedReview == null) {
             if(!isAdmin)
@@ -140,27 +143,23 @@ public class GameService {
             throw new RuntimeException("The server couldn't delete the review due to inconsistencies");
 
         // clean the entry out of the user's reviewIds array too
-        if(!isAdmin)
-            userRepository.removeReviewFromUser(requesterId, new ObjectId(reviewId));
+        userRepository.removeReviewFromUser(requestingUser.getId(), new ObjectId(reviewId));
     }
 
     public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
 
         int reviewNumber = gameRepository.getReviewNumber(gameId);
 
-        if(reviewNumber == 0)
+        ArrayPager pager = new ArrayPager(reviewNumber,page,size);
+
+        if(reviewNumber == 0 || pager.isOutOfBounds())
             return new ArrayList<>();
 
-        int startingReverseIndex = reviewNumber - page*size - 1;
-
-        size = (startingReverseIndex + 1 - size < 0) ? startingReverseIndex + 1 : size;
-
-        int startingIndex = startingReverseIndex - size + 1;
-
-        GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,startingIndex,size);
+        GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,pager.getStart(),pager.getLimit());
 
         List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
-                                    oldReviewDTO.getReviewId().toString()).toList();
+                                    oldReviewDTO.getReviewId().toString()).toList(); // todo ponder about the removal of users
+
         return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
     }
 }

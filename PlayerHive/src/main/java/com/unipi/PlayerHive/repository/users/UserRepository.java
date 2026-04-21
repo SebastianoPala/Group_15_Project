@@ -1,13 +1,14 @@
 package com.unipi.PlayerHive.repository.users;
 
-import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.DTO.users.FriendRequestContainerDTO;
-import com.unipi.PlayerHive.DTO.users.FriendRequestDTO;
 import com.unipi.PlayerHive.DTO.users.FriendRequestMongoDTO;
 import com.unipi.PlayerHive.DTO.users.UserSearchDTO;
+import com.unipi.PlayerHive.DTO.users.UsernameEmailDTO;
 import com.unipi.PlayerHive.model.User;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -18,6 +19,7 @@ import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends MongoRepository<User,String> {
@@ -44,8 +46,11 @@ public interface UserRepository extends MongoRepository<User,String> {
     })
     int getFriendRequestsNumber(String userId);
 
-    @Query(value = "{ '_id' : ?0 }", fields = "{ 'friendRequests' : 1 }")
-    FriendRequestContainerDTO findFriendRequestsById(String id);
+    @Aggregation(pipeline = {
+            "{ '$match': { '_id': ?0 } }",
+            "{ '$project': { 'friendRequests': { '$slice': ['$friendRequests', ?1, ?2] } } }"
+    })
+    FriendRequestContainerDTO findFriendRequestsById(String id,int skip, int limit);
 
     @Query("{ '_id' : ?0 }")
     @Update("{ '$inc' : { 'friends' : ?1 } }")
@@ -71,6 +76,12 @@ public interface UserRepository extends MongoRepository<User,String> {
 
     @Aggregation(pipeline = {
             "{ '$match': { '_id': ?0 } }",
+            "{ '$project': { '_id': 0, 'count': { '$size': '$reviewIds' } } }"
+    })
+    int getReviewNumber(String gameId);
+
+    @Aggregation(pipeline = {
+            "{ '$match': { '_id': ?0 } }",
             "{ '$project': { 'reviews': { '$slice': ['$reviewIds', ?1, ?2] } } }"
     })
     UserReviewContainerDTO getUserReviews(String userId, int skip, int limit);
@@ -85,4 +96,8 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$pull': { 'reviewIds': { 'review_id': ?1 } } }")
     void removeReviewFromUser(String userId, org.bson.types.ObjectId reviewId);
 
+    @Query(value = "{ '_id': ?0, 'reviewIds.game_id': ?1 }", exists = true)
+    boolean hasUserAlreadyReviewed(String userId, ObjectId  gameId);
+
+    Optional<UsernameEmailDTO> findLightByUsernameOrEmail(@NotBlank String username, @NotBlank @Email String email);
 }

@@ -14,6 +14,8 @@ import java.time.LocalDate;
 @Setter
 public class UserSearchDTO {
 
+    private String id;
+
     private String username;
 
     private String role;

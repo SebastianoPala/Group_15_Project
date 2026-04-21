@@ -2,6 +2,8 @@ package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.User;
@@ -10,17 +12,21 @@ import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.utility.ArrayPager;
 import com.unipi.PlayerHive.utility.batch.GameConsistencyManager;
 import com.unipi.PlayerHive.utility.batch.UserConsistencyManager;
 import com.unipi.PlayerHive.utility.map.UserMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -133,10 +139,17 @@ public class UserService {
         return userNeo4jRepository.findUsersFriends(userId, pageable);
     }
 
-    public List<FriendRequestDTO> getFriendRequests() {
+    public List<FriendRequestDTO> getFriendRequests(int page, int size) {
         String userId = getAuthenticatedUser().getId();
 
-        FriendRequestContainerDTO friendRequestContainer = userRepository.findFriendRequestsById(userId);
+        int friendRequestNumber = userRepository.getFriendRequestsNumber(userId);
+
+        ArrayPager pager = new ArrayPager(friendRequestNumber, page, size);
+
+        if(friendRequestNumber == 0 || pager.isOutOfBounds())
+            return new ArrayList<>();
+
+        FriendRequestContainerDTO friendRequestContainer = userRepository.findFriendRequestsById(userId,pager.getStart(),pager.getLimit());
 
         return friendRequestContainer.getFriendRequests();
     }
@@ -252,4 +265,20 @@ public class UserService {
 
     }
 
+    public List<ReviewDTO> getUserReviews(String userId, int page, int size) {
+        int reviewNumber = userRepository.getReviewNumber(userId);
+
+        ArrayPager pager = new ArrayPager(reviewNumber, page, size);
+
+        if(reviewNumber == 0 || pager.isOutOfBounds())
+            return new ArrayList<>();
+
+
+        UserReviewContainerDTO reviewContainer = userRepository.getUserReviews(userId,pager.getStart(),pager.getLimit());
+
+        List<String> reviewIds = reviewContainer.getReviews().stream().map(userReviewDTO ->
+                userReviewDTO.getReviewId().toString()).toList(); // todo ponder about the removal of users
+
+        return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+    }
 }

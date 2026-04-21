@@ -1,6 +1,7 @@
 package com.unipi.PlayerHive.controller;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.service.UserService;
@@ -17,7 +18,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/user")
-// PREAUTHORIZE
 public class UserController {
     private final UserService userService;
 
@@ -25,15 +25,25 @@ public class UserController {
         this.userService = userService;
     }
 
+    public String getAuthenticatedUserId(){
+        return ((UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal()).getUser().getId();
+    }
+
     @GetMapping("/{userId}")
     public ResponseEntity<?> showUserProfile(@PathVariable String userId){
-        String currentUserId = ((UserPrincipal) SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal()).getUser().getId();
-        System.out.println("request from " + currentUserId);
-        if(userId.equals(currentUserId))
-            return ResponseEntity.ok(userService.getOwnProfileById());
-        else
-            return ResponseEntity.ok(userService.getProfileById(userId));
+
+        // I obtain the principal as a general object, since it can be either a String or UserPrincipal depending on if
+        // the user is logged in or not
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if(principal instanceof UserPrincipal){
+            String currentUserId = ((UserPrincipal) principal).getUser().getId();
+            if(userId.equals(currentUserId))
+                return ResponseEntity.ok(userService.getOwnProfileById());
+        }
+        return ResponseEntity.ok(userService.getProfileById(userId));
+
     }
 
     @GetMapping("/MyProfile")
@@ -46,6 +56,13 @@ public class UserController {
                                                                  @RequestParam(defaultValue = "0") @Min(0) int page,
                                                                  @RequestParam(defaultValue = "25") @Min(1) @Max(50) int size){
         return ResponseEntity.ok(userService.getLibraryById(userId, page, size));
+    }
+
+    @GetMapping("/MyLibrary")
+    public ResponseEntity<Page<LibraryGameDTO>> showOwnProfile(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                                        @RequestParam(defaultValue = "25") @Min(1) @Max(50) int size){
+        String requestingUserId = getAuthenticatedUserId();
+        return ResponseEntity.ok(userService.getLibraryById(requestingUserId ,page,size));
     }
 
     @PostMapping("/editLibrary")
@@ -67,14 +84,15 @@ public class UserController {
     }
 
     @GetMapping("/friendRequests") // user is obtained by token
-    public ResponseEntity<List<FriendRequestDTO>> showFriendRequests(){
-        return ResponseEntity.ok(userService.getFriendRequests());
+    public ResponseEntity<List<FriendRequestDTO>> showFriendRequests(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                                                     @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size){
+        return ResponseEntity.ok(userService.getFriendRequests(page,size));
     }
 
     @GetMapping("/search/{query}")
     public ResponseEntity<Slice<UserSearchDTO>> searchUser(@PathVariable String query,
                                                             @RequestParam(defaultValue = "0") @Min(0) int page,
-                                                            @RequestParam(defaultValue = "10") @Min(1) @Max(20) int size){
+                                                            @RequestParam(defaultValue = "10") @Min(1) @Max(30) int size){
         return ResponseEntity.ok(userService.searchUser(query, page, size));
     }
 
@@ -101,11 +119,24 @@ public class UserController {
         return ResponseEntity.ok("Friend removed successfully");
     }
 
+    @GetMapping("/reviews/{userId}")
+    public ResponseEntity<List<ReviewDTO>> getUserReviews(@PathVariable String userId,
+                                                    @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                    @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size){
+        return ResponseEntity.ok(userService.getUserReviews(userId,page,size));
+    }
+
+    @GetMapping("/MyReviews")
+    public ResponseEntity<List<ReviewDTO>> getOwnReviews(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                                          @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size){
+
+        return ResponseEntity.ok(userService.getUserReviews(getAuthenticatedUserId(),page,size));
+    }
+
     @DeleteMapping("/deleteAccount")
     public ResponseEntity<String> deleteAccount(){
         // same pattern as MyProfile, pull the id from the token so we know whose account to delete
-        String userId = ((UserPrincipal) SecurityContextHolder.getContext()
-                .getAuthentication().getPrincipal()).getUser().getId();
+        String userId = getAuthenticatedUserId();
         userService.deleteUser(userId);
         return ResponseEntity.ok("Account Deleted successfully");
     }

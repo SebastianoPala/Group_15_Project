@@ -23,13 +23,19 @@ public class MyUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) {
         User user = userRepository.findByEmail(email);
-        if (user == null) throw new NoSuchElementException("User not found");
+
+        if (user == null)
+            throw new NoSuchElementException("User not found");
+
         return new UserPrincipal(user);
     }
 
     public User loadUserById(String id) {
         User user = userRepository.findByIdLean(id);
-        if (user == null) throw new NoSuchElementException("User not found: " + id);
+
+        if (user == null)
+            throw new NoSuchElementException("User not found: " + id);
+
         return user;
     }
 }
