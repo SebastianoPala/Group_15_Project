@@ -148,6 +148,9 @@ public class GameService {
 
     public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
 
+        if(!gameRepository.existsById(gameId))
+            throw new NoSuchElementException("The game does not exist");
+
         int reviewNumber = gameRepository.getReviewNumber(gameId);
 
         ArrayPager pager = new ArrayPager(reviewNumber,page,size);

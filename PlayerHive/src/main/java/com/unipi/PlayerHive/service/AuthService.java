@@ -61,6 +61,7 @@ public class AuthService {
         newUser.setNumGames(0);
         newUser.setHoursPlayed(0);
         newUser.setFriends(0);
+        // TODO: DO WE HAVE TO ADD THE EMPTY ARRAYS, OR DO WE ADD THE NULL CHECK IN THE QUERIES?
         newUser.setFriendRequests(new ArrayList<>());
         newUser.setReviewIds(new ArrayList<>());
 

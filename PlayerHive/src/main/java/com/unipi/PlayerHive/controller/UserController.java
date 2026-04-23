@@ -46,6 +46,14 @@ public class UserController {
 
     }
 
+    @GetMapping("/search/{query}")
+    public ResponseEntity<Slice<UserSearchDTO>> searchUser(@PathVariable String query,
+                                                           @RequestParam(defaultValue = "0") @Min(0) int page,
+                                                           @RequestParam(defaultValue = "10") @Min(1) @Max(30) int size){
+        return ResponseEntity.ok(userService.searchUser(query, page, size));
+    }
+
+
     @GetMapping("/MyProfile")
     public ResponseEntity<OwnProfileDTO> showOwnProfile(){
         return ResponseEntity.ok(userService.getOwnProfileById());
@@ -83,17 +91,17 @@ public class UserController {
         return ResponseEntity.ok(userService.getFriendListById(userId, page, size));
     }
 
+    @GetMapping("/MyFriends")
+    public ResponseEntity<Page<FriendDTO>> showOwnFriendList(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                                          @RequestParam(defaultValue = "25") @Min(1) @Max(50) int size){
+        String requestingUserId = getAuthenticatedUserId();
+        return ResponseEntity.ok(userService.getFriendListById(requestingUserId,page, size));
+    }
+
     @GetMapping("/friendRequests") // user is obtained by token
     public ResponseEntity<List<FriendRequestDTO>> showFriendRequests(@RequestParam(defaultValue = "0") @Min(0) int page,
                                                                      @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size){
         return ResponseEntity.ok(userService.getFriendRequests(page,size));
-    }
-
-    @GetMapping("/search/{query}")
-    public ResponseEntity<Slice<UserSearchDTO>> searchUser(@PathVariable String query,
-                                                            @RequestParam(defaultValue = "0") @Min(0) int page,
-                                                            @RequestParam(defaultValue = "10") @Min(1) @Max(30) int size){
-        return ResponseEntity.ok(userService.searchUser(query, page, size));
     }
 
     @PostMapping("/sendFriendRequest/{targetUserId}")
@@ -133,9 +141,10 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserReviews(getAuthenticatedUserId(),page,size));
     }
 
+    // TODO: TEST THIS FUNCTION
     @DeleteMapping("/deleteAccount")
     public ResponseEntity<String> deleteAccount(){
-        // same pattern as MyProfile, pull the id from the token so we know whose account to delete
+
         String userId = getAuthenticatedUserId();
         userService.deleteUser(userId);
         return ResponseEntity.ok("Account Deleted successfully");

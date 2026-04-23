@@ -34,11 +34,11 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Query("{ '_id' : ?0, 'friendRequests.user_id' : ?1 }")
     @Update("{ '$pull' : { 'friendRequests' : { 'user_id' : ?1 } }, " +
             "  '$inc' : { 'friends' : 1 } }")
-    int acceptFriendRequest(String userId, String userToAccept);
+    int acceptFriendRequest(String userId, ObjectId userToAccept);
 
     @Query("{ '_id' : ?0 }")
     @Update("{ '$pull' : { 'friendRequests' : { 'user_id' : ?1 } } }")
-    int removeFriendRequest(String userId, String userToRemove);
+    int removeFriendRequest(String userId, ObjectId userToRemove);
 
     @Aggregation(pipeline = {
             "{ '$match' : { '_id' : ?0 } }",
