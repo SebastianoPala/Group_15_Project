@@ -117,23 +117,16 @@ public class GameService {
         User requestingUser = getAuthenticatedUser();
         Review deletedReview;
 
-        // this "thing" is useful in case of users with multiple roles, so for our project is just overhead and unreadable </3
-        //boolean isAdmin = principal.getAuthorities().stream()
-        //        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-        // gemini also recommended this ugly thing:
-        // boolean isAdmin = principal.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
-
         boolean isAdmin = requestingUser.getRole().equalsIgnoreCase("ADMIN");
 
         if(isAdmin)
             deletedReview = reviewRepository.removeById(reviewId);
         else
-            deletedReview = reviewRepository.removeByIdAndUserId(reviewId,requestingUser.getId());
+            deletedReview = reviewRepository.removeByIdAndUserId(reviewId,new ObjectId(requestingUser.getId()));
 
         if (deletedReview == null) {
             if(!isAdmin)
-                throw new IllegalArgumentException("You can only delete your own reviews");
+                throw new IllegalArgumentException("No user reviews match the requested id");
             else
                 throw new NoSuchElementException("The review does not exist");
         }

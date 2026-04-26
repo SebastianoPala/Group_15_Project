@@ -17,7 +17,7 @@ public class ArrayPager {
 
         limit = (startingReverseIndex + 1 - page_size < 0) ? startingReverseIndex + 1 : page_size;
 
-        start = startingReverseIndex - page_size + 1;
+        start = startingReverseIndex - limit + 1;
     }
 
     public boolean isOutOfBounds(){

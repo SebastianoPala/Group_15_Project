@@ -286,18 +286,28 @@ public class UserService {
             throw new RuntimeException("You can't delete another user's profile"); //TODO ADD NEW EXCEPTION TYPE
         }
 
+        if(isAdmin && !userRepository.existsById(userId))
+            throw new NoSuchElementException("The user requested for deletion does not exist");
+
+        System.out.println("A user with Id: " + userId + " has been scheduled for deletion");
+
+        // TODO SHOULD WE HAVE THEM INJECTED?
         UserConsistencyManager userManager = new UserConsistencyManager(mongoTemplate);
         GameConsistencyManager gameManager = new GameConsistencyManager(mongoTemplate);
 
-        // we obtain all the friends in a stream for easy access
-        Stream<String> friendStream = userNeo4jRepository.findUsersFriendStream(userId);
+        List<String> friendList = userNeo4jRepository.findAllUsersFriend(userId);
 
-        // decrements the "friend" value of every user found in the previous query
-        userManager.adjustFriendCountersAfterUserRemoval(friendStream.iterator(), userRepository);
-        friendStream.close();
+        System.out.println("The target user has " + friendList.size() + " friends");
+
+        if(!friendList.isEmpty()) {
+            // decrements the "friend" value of every user found in the previous query
+            userManager.adjustFriendCountersAfterUserRemoval(friendList.iterator(), userRepository);
+
+            friendList.clear();
+        }
 
         // deletes all user's reviews
-        reviewRepository.removeByUserId(userId);
+        reviewRepository.removeByUserId(new ObjectId(userId));
 
         // we remove the user's reviews from every single game
         gameManager.removeUserReviewsFromGames(userId,userRepository);

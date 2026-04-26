@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/games")
-// PREAUTHORIZE
+
 public class GameController {
     private final GameService gameService;
 

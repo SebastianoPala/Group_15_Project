@@ -2,6 +2,7 @@ package com.unipi.PlayerHive.repository;
 
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.model.Review;
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,9 +16,9 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
 
     List<ReviewDTO> findByIdInOrderByTimestampDesc(List<String> reviewIds);
 
-    void removeByGameId(String gameId);
+    void removeByGameId(ObjectId gameId);
 
-    void removeByUserId(String userId);
+    void removeByUserId(ObjectId userId);
 
-    Review removeByIdAndUserId(String reviewId, String requesterId);
+    Review removeByIdAndUserId(String reviewId, ObjectId requesterId);
 }

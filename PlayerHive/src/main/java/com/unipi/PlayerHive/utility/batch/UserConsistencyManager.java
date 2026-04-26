@@ -5,6 +5,7 @@ import com.unipi.PlayerHive.DTO.users.GameOwnerDTO;
 import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -44,8 +45,8 @@ public record UserConsistencyManager(MongoTemplate mongoTemplate) {
             Query query = new Query(Criteria.where("_id").is(dto.getId()));
 
             Update update = new Update()
-                    .inc("totalHoursPlayed", -dto.getHoursPlayed())
-                    .inc("totalGamesOwned", -1);
+                    .inc("hoursPlayed", -dto.getHoursPlayed())
+                    .inc("numGames", -1);
 
             bulkOps.updateOne(query, update);
         }
@@ -75,16 +76,14 @@ public record UserConsistencyManager(MongoTemplate mongoTemplate) {
             for (OldGameReviewDTO review : reviews) {
                 Query query = new Query(Criteria.where("_id").is(review.getUserId()));
 
-                Update update = new Update().pull("reviewIds", review.getReviewId());
+                //Update update = new Update().pull("reviewIds", review.getReviewId());
+                Update update = new Update().pull("reviewIds", new org.bson.Document("review_id", review.getReviewId()));
 
                 bulkOps.updateOne(query, update);
             }
 
             bulkOps.execute();
-
-
         }
-
     }
 
     public void adjustFriendCountersAfterUserRemoval(Iterator<String> iterator, UserRepository userRepository){

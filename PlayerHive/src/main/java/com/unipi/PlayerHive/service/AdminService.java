@@ -14,6 +14,7 @@ import com.unipi.PlayerHive.utility.map.GameMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import org.bson.types.ObjectId;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.beans.FeatureDescriptor;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
@@ -59,6 +61,7 @@ public class AdminService {
     @Transactional
     public void addGame(@Nonnull @Valid @RequestBody AddGameDTO newGame) {
 
+        //TODO DO WE NEED INDEXES? THIS OP IS RARE
         if(gameRepository.existsByName(newGame.getName()))
                 throw new ResourceAlreadyExistsException("Game "+ newGame.getName() +" already exists");
 
@@ -83,10 +86,11 @@ public class AdminService {
 
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new NoSuchElementException("The Game with id:\"" + gameId + "\" does not exist"));
 
-        copyNonNullProperties(editGame,game);
         if (!game.getName().equals(editGame.getName()) && gameRepository.existsByName(editGame.getName())) { // avoids throwing an exception if I modify the game name to itself
             throw new ResourceAlreadyExistsException("Game "+ editGame.getName() +" already exists");
         }
+
+        copyNonNullProperties(editGame,game);
 
         gameRepository.save(game);
         GameNeo4j gameNeo = gameNeo4jRepository.findById(gameId).orElseThrow(() -> new NoSuchElementException("Game not found on Neo4j"));
@@ -99,25 +103,30 @@ public class AdminService {
     @Transactional
     public void deleteGame(String gameId) {
 
-        if(!gameRepository.existsById(gameId)){
+        if(!gameRepository.existsById(gameId))
             throw new NoSuchElementException("The game chosen for deletion does not exist");
-        }
+
+        System.out.println("A game with Id: " + gameId + " has been scheduled for deletion");
 
         // we obtain from neo4j all the relationships that point to the game of interest
-        Stream<GameOwnerDTO> allOwners = gameNeo4jRepository.findGameOwnersOf(gameId);
+        List<GameOwnerDTO> allOwners = gameNeo4jRepository.findGameOwnersOf(gameId);
+
+        System.out.println(allOwners.size() + " users have this game in their collection");
 
         //the user consistency manager requires mongoTemplate for batch operation
         UserConsistencyManager userManager = new UserConsistencyManager(mongoTemplate);
 
-        //todo: this operation is super heavy, but games are basically never deleted, especially popular ones
-        //todo: if we do not perform the user update here, it makes the user related queries heavier
-        //all users "hoursPlayed" and "numGames" are decreased accordingly
-        userManager.adjustUserStatsAfterGameRemoval(allOwners.iterator());
-
-        allOwners.close();
+        // TODO INJECT SERVICE
+        if(!allOwners.isEmpty()) {
+            //todo: this operation is super heavy, but games are basically never deleted, especially popular ones
+            //todo: if we do not perform the user update here, it makes the user related queries heavier
+            //all users "hoursPlayed" and "numGames" are decreased accordingly
+            userManager.adjustUserStatsAfterGameRemoval(allOwners.iterator());
+            allOwners.clear();
+        }
 
         //all reviews are now deleted
-        reviewRepository.removeByGameId(gameId);
+        reviewRepository.removeByGameId(new ObjectId(gameId));
 
         //the game node in neo4j is removed
         gameNeo4jRepository.deleteById(gameId);
