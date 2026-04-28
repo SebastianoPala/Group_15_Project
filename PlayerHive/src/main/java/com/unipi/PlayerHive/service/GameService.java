@@ -11,7 +11,6 @@ import com.unipi.PlayerHive.model.Review;
 import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.model.UserPrincipal;
 import com.unipi.PlayerHive.repository.ReviewRepository;
-import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.utility.ArrayPager;
@@ -34,18 +33,15 @@ import java.util.NoSuchElementException;
 public class GameService {
 
     private final GameRepository gameRepository;
-    private final GameNeo4jRepository gameNeo4jRepository; // probably removable
     private final GameMapper gameMapper;
-
     private final ReviewRepository reviewRepository;
     private final ReviewMapper reviewMapper;
     private final UserRepository userRepository;
 
     public GameService(GameRepository gameRepository,
-                       GameNeo4jRepository gameNeo4jRepository, GameMapper gameMapper, ReviewRepository reviewRepository, ReviewMapper reviewMapper, UserRepository userRepository
+                       GameMapper gameMapper, ReviewRepository reviewRepository, ReviewMapper reviewMapper, UserRepository userRepository
     ){
         this.gameRepository = gameRepository;
-        this.gameNeo4jRepository = gameNeo4jRepository;
         this.gameMapper = gameMapper;
         this.reviewRepository = reviewRepository;
         this.reviewMapper = reviewMapper;
@@ -79,6 +75,26 @@ public class GameService {
         return gameRepository.searchByNameContaining(gameName, pageable);
     }
 
+    public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
+
+        if(!gameRepository.existsById(gameId))
+            throw new NoSuchElementException("The game does not exist");
+
+        int reviewNumber = gameRepository.getReviewNumber(gameId);
+
+        ArrayPager pager = new ArrayPager(reviewNumber,page,size);
+
+        if(reviewNumber == 0 || pager.isOutOfBounds())
+            return new ArrayList<>();
+
+        GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,pager.getStart(),pager.getLimit());
+
+        List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
+                oldReviewDTO.getReviewId().toString()).toList(); // todo ponder about the removal of users
+
+        return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+    }
+
     @Transactional
     public void addReview(String gameId, AddReviewDTO addReviewDTO) {
 
@@ -99,9 +115,9 @@ public class GameService {
 
         ReviewDTO recentReview = reviewMapper.reviewToRecentReviewDTO(savedReview);
 
-        OldGameReviewDTO oldReview = new OldGameReviewDTO(new ObjectId(recentReview.getId()),userIdObj);
+        OldGameReviewDTO oldReview = new OldGameReviewDTO(new ObjectId(recentReview.getId()),addReviewDTO.getScore());
 
-        int modified = gameRepository.addReviewToGame(gameId,oldReview , recentReview, recentReview.getScore());
+        int modified = gameRepository.addReviewToGame(gameId,oldReview , recentReview, addReviewDTO.getScore());
         if(modified != 1)
             throw new RuntimeException("An error has occurred when adding the review to the game");
 
@@ -139,23 +155,4 @@ public class GameService {
         userRepository.removeReviewFromUser(requestingUser.getId(), new ObjectId(reviewId));
     }
 
-    public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
-
-        if(!gameRepository.existsById(gameId))
-            throw new NoSuchElementException("The game does not exist");
-
-        int reviewNumber = gameRepository.getReviewNumber(gameId);
-
-        ArrayPager pager = new ArrayPager(reviewNumber,page,size);
-
-        if(reviewNumber == 0 || pager.isOutOfBounds())
-            return new ArrayList<>();
-
-        GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,pager.getStart(),pager.getLimit());
-
-        List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
-                                    oldReviewDTO.getReviewId().toString()).toList(); // todo ponder about the removal of users
-
-        return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
-    }
 }

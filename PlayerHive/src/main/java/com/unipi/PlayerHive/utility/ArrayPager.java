@@ -21,7 +21,7 @@ public class ArrayPager {
     }
 
     public boolean isOutOfBounds(){
-        return start < 0;
+        return start < 0 || limit <= 0;
     }
 
 }

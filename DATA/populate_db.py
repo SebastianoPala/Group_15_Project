@@ -137,7 +137,7 @@ def upload_to_mongodb(games_data, users_data, all_reviews_data):
         g_copy["allReviews"] = [
             {
                 "review_id": ObjectId(r["review_id"]),
-                "user_id": ObjectId(r["user_id"])
+                "score": r["score"]  
             } 
             for r in g_copy.get("allReviews", [])
         ]
@@ -330,19 +330,15 @@ def main():
             game["sumScore"] = 0.0
             game["countScore"] = 0
             
-        # 2. Crea l'array allReviews con dizionari contenenti review_id e user_id
-        # Dato che raw_reviews è ordinato (vecchie in testa, nuove in fondo),
-        # l'array allReviews sarà ottimizzato per fare l'append di nuove recensioni in fondo.
+
         game["allReviews"] = [
             {
                 "review_id": r["_id"]["$oid"], 
-                "user_id": r["user_id"]
+                "score": r["score"]  
             } 
             for r in game["raw_reviews"]
         ]
         
-        # 3. Crea l'array recentReviews prendendo le ultime 25 recensioni e ribaltando l'ordine
-        # raw_reviews[::-1] ribalta la lista mettendo in testa le PIÙ RECENTI (per inserimenti in testa sul client).
         recent_25 = game["raw_reviews"][::-1][:25]
         
         # Rimuoviamo il game_id dai documenti embedded perché è ridondante

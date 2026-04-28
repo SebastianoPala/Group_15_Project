@@ -58,7 +58,7 @@ public interface UserRepository extends MongoRepository<User,String> {
 
     @Query("{ '_id' : { $in : ?0 } }")
     @Update("{ '$inc' : { 'friends' : -1 } }")
-    void decrementFriendCounterForUsers(List<String> userIds);
+    int decrementFriendCounterForUsers(List<String> userIds);
 
     @Query("{ '_id': ?0 }")
     @Update("{ '$inc': { 'hoursPlayed': ?1, 'numGames': ?2 } }")
@@ -98,6 +98,10 @@ public interface UserRepository extends MongoRepository<User,String> {
 
     @Query(value = "{ '_id': ?0, 'reviewIds.game_id': ?1 }", exists = true)
     boolean hasUserAlreadyReviewed(String userId, ObjectId  gameId);
+
+    @Query("{ 'reviewIds.game_id': ?0 }")
+    @Update("{ '$pull': { 'reviewIds': { 'game_id': ?0 } } }")
+    long removeAllGameReviewsFromUsers(ObjectId gameId);
 
     Optional<UsernameEmailDTO> findLightByUsernameOrEmail(@NotBlank String username, @NotBlank @Email String email);
 }

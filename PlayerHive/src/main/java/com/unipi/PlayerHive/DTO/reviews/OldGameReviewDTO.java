@@ -17,7 +17,6 @@ public class OldGameReviewDTO {
     @Field("review_id")
     private ObjectId reviewId;
 
-    @Field("user_id")
-    private ObjectId userId;
+    private Float score;
 
 }

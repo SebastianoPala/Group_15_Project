@@ -16,9 +16,9 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
 
     List<ReviewDTO> findByIdInOrderByTimestampDesc(List<String> reviewIds);
 
-    void removeByGameId(ObjectId gameId);
+    long removeByGameId(ObjectId gameId);
 
-    void removeByUserId(ObjectId userId);
+    long removeByUserId(ObjectId userId);
 
     Review removeByIdAndUserId(String reviewId, ObjectId requesterId);
 }

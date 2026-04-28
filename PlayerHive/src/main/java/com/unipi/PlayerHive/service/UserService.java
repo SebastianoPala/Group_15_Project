@@ -1,12 +1,14 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
+import com.unipi.PlayerHive.DTO.games.PlaytimeAchievementsDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.User;
 import com.unipi.PlayerHive.repository.ReviewRepository;
+import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
@@ -22,7 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.mongodb.core.MongoTemplate;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -31,28 +33,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.stream.Stream;
+
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final UserNeo4jRepository userNeo4jRepository;
     private final GameRepository gameRepository;
+    private final GameNeo4jRepository gameNeo4jRepository;
     private final UserMapper userMapper;
-    private final MongoTemplate mongoTemplate;
+
+    private final UserConsistencyManager userConsistencyManager;
+    private final GameConsistencyManager gameConsistencyManager;
 
     private final ReviewRepository reviewRepository;
 
-    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository, GameRepository gameRepository, UserMapper userMapper, MongoTemplate mongoTemplate, ReviewRepository reviewRepository) {
+    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository, GameRepository gameRepository, UserMapper userMapper, GameNeo4jRepository gameNeo4jRepository, UserConsistencyManager userConsistencyManager, GameConsistencyManager gameConsistencyManager, ReviewRepository reviewRepository) {
         this.userRepository = userRepository;
         this.userNeo4jRepository = userNeo4jRepository;
         this.gameRepository = gameRepository;
         this.userMapper = userMapper;
-        this.mongoTemplate = mongoTemplate;
+        this.gameNeo4jRepository = gameNeo4jRepository;
+        this.userConsistencyManager = userConsistencyManager;
+        this.gameConsistencyManager = gameConsistencyManager;
         this.reviewRepository = reviewRepository;
     }
-
-    // TODO: REORDER THE FUNCTIONS SO THAT THEY MATCH THE CONTROLLER
 
     // JwtFilter already put the authenticated user in the security context earlier in the request, this just reads it back out :)
     private User getAuthenticatedUser() {
@@ -96,24 +101,29 @@ public class UserService {
     public void editLibrary(@Valid AddGameToLibraryDTO addGame) {
         // TODO: add to the exception controller the validation failure exception (negative achievements)
 
+        if(addGame.getGameId().length() != 24)
+            throw new IllegalArgumentException("The provided game Id is not valid");
+
         if(!gameRepository.existsById(addGame.getGameId()))
             throw new NoSuchElementException("The requested game does not exist");
 
         String userId = getAuthenticatedUser().getId();
 
-        Optional<Double> previousUserPlaytime = userNeo4jRepository.findUserGamePlaytime(userId, addGame.getGameId());
+        Optional<PlaytimeAchievementsDTO> playAchiev = gameNeo4jRepository.findUserPlaytimeAndGameAchievements(userId, addGame.getGameId());
+
+        if(playAchiev.isPresent() && playAchiev.get().getAchievements() < addGame.getAchievements())
+            throw new IllegalArgumentException("The achievement number exceeds the game's achievement number");
 
         //float totalPlaytime = game.getTotalHoursPlayed() + addGame.getHoursPlayed(); TODO DELAY UPDATE
         float userPlaytimeToAdd = addGame.getHoursPlayed();
         int gameNumberToAdd = 0;
 
-        // TODO DO I just assume mongodb and neo4j data are synchronized?
-        if(previousUserPlaytime.isEmpty()){
+        if(playAchiev.isEmpty()){
             // game.setNumPlayers(game.getNumPlayers() + 1 ); TODO DELAY UPDATE
             gameNumberToAdd++;
         }else{
             //totalPlaytime -= userGamePlaytime.get().floatValue();
-            userPlaytimeToAdd -= previousUserPlaytime.get().floatValue();
+            userPlaytimeToAdd -= playAchiev.get().getHoursPlayed().floatValue();
         }
 
         if(userPlaytimeToAdd == 0 && gameNumberToAdd == 0)
@@ -152,7 +162,8 @@ public class UserService {
     }
 
     public Page<FriendDTO> getFriendListById(String userId, int page, int size) {
-        // TODO: THIS QUERY RETURNS 200 and an empty array **EVEN IF** no user matches the id. is this fine or do we have to fix it, adding an extra query?
+        if(!userRepository.existsById(userId))
+            throw new NoSuchElementException("The requested user does not exist");
         Pageable pageable = PageRequest.of(page,size);
         return userNeo4jRepository.findUsersFriends(userId, pageable);
     }
@@ -204,21 +215,34 @@ public class UserService {
     }
 
     @Transactional
-    public void approveRequestFromUser(String targetUserId) {
+    public String approveRequestFromUser(String targetUserId) {
         String userId = getAuthenticatedUser().getId();
+
+        if(targetUserId.length() != 24) // prevents ObjectId constructor exception
+            throw new IllegalArgumentException("The input given is not a valid user Id");
+
+        if(!userRepository.existsById(targetUserId)){
+            int result = userRepository.removeFriendRequest(userId,new ObjectId(targetUserId));
+            if(result == 1)
+                return "The profile that sent the friend request no longer exists. The friend request has been removed";
+            else
+                throw new NoSuchElementException("Friend request was not present!");
+        }
 
         int result = userRepository.acceptFriendRequest(userId,new ObjectId(targetUserId));
         if(result != 1)
             throw new NoSuchElementException("Friend request was not present!");
 
         result = userRepository.editFriendCounter(targetUserId, 1);
-        if(result != 1)
+        if(result != 1){
             throw new RuntimeException("The server couldn't increase the user's friend counter");
+        }
 
         boolean success = userNeo4jRepository.createFriendship(userId,targetUserId);
         if(!success)
             throw new RuntimeException("The server was unable to complete the operation");
 
+        return "The friend request has been approved successfully";
     }
 
     public void removeRequestFromUser(String targetUserId) {
@@ -291,9 +315,6 @@ public class UserService {
 
         System.out.println("A user with Id: " + userId + " has been scheduled for deletion");
 
-        // TODO SHOULD WE HAVE THEM INJECTED?
-        UserConsistencyManager userManager = new UserConsistencyManager(mongoTemplate);
-        GameConsistencyManager gameManager = new GameConsistencyManager(mongoTemplate);
 
         List<String> friendList = userNeo4jRepository.findAllUsersFriend(userId);
 
@@ -301,16 +322,24 @@ public class UserService {
 
         if(!friendList.isEmpty()) {
             // decrements the "friend" value of every user found in the previous query
-            userManager.adjustFriendCountersAfterUserRemoval(friendList.iterator(), userRepository);
+            long modified = userConsistencyManager.adjustFriendCountersAfterUserRemoval(friendList.iterator());
+
+            System.out.println(modified + " users had their friend counter decreased");
 
             friendList.clear();
         }
 
+        // we do not delete friend requests
+
         // deletes all user's reviews
-        reviewRepository.removeByUserId(new ObjectId(userId));
+        long deleted = reviewRepository.removeByUserId(new ObjectId(userId));
+
+        System.out.println(deleted + " reviews were deleted from the Review Collection");
 
         // we remove the user's reviews from every single game
-        gameManager.removeUserReviewsFromGames(userId,userRepository);
+        deleted = gameConsistencyManager.removeUserReviewsFromGames(userId);
+
+        System.out.println(deleted + " games had their reviews updated");
 
         // TODO: now that we removed reviews, the games score should be updated. Manage this!! DONT DO IT IN THIS FUNCTION THO
 

@@ -9,6 +9,7 @@ import com.unipi.PlayerHive.model.GameNeo4j;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
+import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.utility.batch.UserConsistencyManager;
 import com.unipi.PlayerHive.utility.map.GameMapper;
 import jakarta.annotation.Nonnull;
@@ -18,7 +19,6 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -33,16 +33,21 @@ public class AdminService {
     private final GameRepository gameRepository;
     private final GameNeo4jRepository gameNeo4jRepository;
     private final GameMapper gameMapper;
-    private final MongoTemplate mongoTemplate;
+
+    private final UserRepository userRepository;
 
     private final ReviewRepository reviewRepository;
 
-    public AdminService(GameRepository gameRepository, GameNeo4jRepository gameNeo4jRepository, GameMapper gameMapper, MongoTemplate mongoTemplate, ReviewRepository reviewRepository) {
+    private final UserConsistencyManager userConsistencyManager;
+
+    public AdminService(GameRepository gameRepository, GameNeo4jRepository gameNeo4jRepository, GameMapper gameMapper, UserRepository userRepository, ReviewRepository reviewRepository,
+                        UserConsistencyManager userConsistencyManager) {
         this.gameRepository = gameRepository;
         this.gameNeo4jRepository = gameNeo4jRepository;
         this.gameMapper = gameMapper;
-        this.mongoTemplate = mongoTemplate;
+        this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
+        this.userConsistencyManager = userConsistencyManager;
     }
 
     // This function copies all the non-null fields from source to target, and only matches fields with the same name
@@ -113,26 +118,30 @@ public class AdminService {
 
         System.out.println(allOwners.size() + " users have this game in their collection");
 
-        //the user consistency manager requires mongoTemplate for batch operation
-        UserConsistencyManager userManager = new UserConsistencyManager(mongoTemplate);
-
-        // TODO INJECT SERVICE
         if(!allOwners.isEmpty()) {
             //todo: this operation is super heavy, but games are basically never deleted, especially popular ones
             //todo: if we do not perform the user update here, it makes the user related queries heavier
             //all users "hoursPlayed" and "numGames" are decreased accordingly
-            userManager.adjustUserStatsAfterGameRemoval(allOwners.iterator());
+            long modified = userConsistencyManager.adjustUserStatsAfterGameRemoval(allOwners.iterator());
+            System.out.println(modified + " users had their stats updated");
+
             allOwners.clear();
         }
 
+        ObjectId gameIdObj = new ObjectId(gameId);
+
         //all reviews are now deleted
-        reviewRepository.removeByGameId(new ObjectId(gameId));
+        long deleted = reviewRepository.removeByGameId(gameIdObj);
+
+        System.out.println(deleted + " reviews were deleted from the Review Collection");
 
         //the game node in neo4j is removed
         gameNeo4jRepository.deleteById(gameId);
 
         // all reviews of the game are removed from the reviews array present in every user document
-        userManager.removeGameReviewsFromUsers(gameId,gameRepository);
+        deleted = userRepository.removeAllGameReviewsFromUsers(gameIdObj);
+
+        System.out.println(deleted + " users had their reviews updated");
 
         //we can finally delete the JSON document
         gameRepository.deleteById(gameId);

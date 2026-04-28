@@ -7,6 +7,8 @@ import com.unipi.PlayerHive.service.GameService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +26,7 @@ public class GameController {
     }
 
     @GetMapping("/{gameId}")
-    public ResponseEntity<GameInfoDTO> getInfo(@PathVariable String gameId){
+    public ResponseEntity<GameInfoDTO> getInfo(@PathVariable @NotNull  @Size(min = 24, max = 24) String gameId){
         return ResponseEntity.ok(gameService.getGameById(gameId));
     }
 
@@ -36,20 +38,20 @@ public class GameController {
     }
 
     @GetMapping("showReviews/{gameId}")
-    public ResponseEntity<List<ReviewDTO>> showGameReviews(@PathVariable String gameId,
+    public ResponseEntity<List<ReviewDTO>> showGameReviews(@PathVariable @NotNull  @Size(min = 24, max = 24) String gameId,
                                                            @RequestParam(defaultValue = "0") @Min(0) int page,
                                                            @RequestParam(defaultValue = "25") @Min(25) @Max(100) int size){
         return ResponseEntity.ok(gameService.getGameReviews(gameId,page,size));
     }
 
     @PostMapping("/addReview/{gameId}")
-    public ResponseEntity<String> addReview(@PathVariable String gameId,@Valid @RequestBody AddReviewDTO addReviewDTO){
+    public ResponseEntity<String> addReview(@PathVariable @NotNull @Size(min = 24, max = 24) String gameId, @Valid @RequestBody AddReviewDTO addReviewDTO){
         gameService.addReview(gameId, addReviewDTO);
         return ResponseEntity.ok("Review added successfully");
     }
 
     @DeleteMapping("/deleteReview/{reviewId}")
-    public ResponseEntity<String> deleteReview(@PathVariable String reviewId){
+    public ResponseEntity<String> deleteReview(@PathVariable @NotNull  @Size(min = 24, max = 24) String reviewId){
         gameService.deleteReview(reviewId);
         return ResponseEntity.ok("Review deleted successfully");
     }

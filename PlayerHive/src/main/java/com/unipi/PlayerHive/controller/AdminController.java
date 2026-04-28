@@ -6,6 +6,8 @@ import com.unipi.PlayerHive.DTO.games.EditGameDTO;
 import com.unipi.PlayerHive.service.AdminService;
 import com.unipi.PlayerHive.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,18 +28,18 @@ public class AdminController {
         return ResponseEntity.ok("The game has been added successfully");
     }
     @PatchMapping("/editGame/{gameId}")
-    public ResponseEntity<String> editGame(@PathVariable String gameId, @RequestBody EditGameDTO editGame){
+    public ResponseEntity<String> editGame(@PathVariable @NotNull @Size(min = 24, max = 24) String gameId, @RequestBody EditGameDTO editGame){
         adminService.editGame(gameId,editGame);
         return ResponseEntity.ok("The game info has been edited successfully");
     }
     @DeleteMapping("/deleteGame/{gameId}")
-    public ResponseEntity<String> deleteGame(@PathVariable String gameId){
+    public ResponseEntity<String> deleteGame(@PathVariable @NotNull @Size(min = 24, max = 24) String gameId){
         adminService.deleteGame(gameId);
         return ResponseEntity.ok("The game has been deleted successfully");
     }
 
     @DeleteMapping("/deleteUser/{userId}")
-    public ResponseEntity<String> deleteUser(@PathVariable String userId){
+    public ResponseEntity<String> deleteUser(@PathVariable @NotNull @Size(min = 24, max = 24) String userId){
         userService.deleteUser(userId);
         return  ResponseEntity.ok("The user has been deleted successfully");
     }
