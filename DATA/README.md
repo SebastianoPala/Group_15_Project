@@ -1,1 +1,1 @@
-WARNING!! the "no_json" version of the script is slightly more updated
+## Python Scripts for DB population and API testing
