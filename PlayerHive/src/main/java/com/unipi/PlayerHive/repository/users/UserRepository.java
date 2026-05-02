@@ -2,11 +2,10 @@ package com.unipi.PlayerHive.repository.users;
 
 import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
-import com.unipi.PlayerHive.DTO.users.FriendRequestContainerDTO;
-import com.unipi.PlayerHive.DTO.users.FriendRequestMongoDTO;
-import com.unipi.PlayerHive.DTO.users.UserSearchDTO;
-import com.unipi.PlayerHive.DTO.users.UsernameEmailDTO;
-import com.unipi.PlayerHive.model.User;
+import com.unipi.PlayerHive.DTO.users.*;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestContainerDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestMongoDTO;
+import com.unipi.PlayerHive.model.user.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.bson.types.ObjectId;
@@ -50,7 +49,7 @@ public interface UserRepository extends MongoRepository<User,String> {
             "{ '$match': { '_id': ?0 } }",
             "{ '$project': { 'friendRequests': { '$slice': ['$friendRequests', ?1, ?2] } } }"
     })
-    FriendRequestContainerDTO findFriendRequestsById(String id,int skip, int limit);
+    FriendRequestContainerDTO findFriendRequestsById(String id, int skip, int limit);
 
     @Query("{ '_id' : ?0 }")
     @Update("{ '$inc' : { 'friends' : ?1 } }")
@@ -103,5 +102,72 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$pull': { 'reviewIds': { 'game_id': ?0 } } }")
     long removeAllGameReviewsFromUsers(ObjectId gameId);
 
-    Optional<UsernameEmailDTO> findLightByUsernameOrEmail(@NotBlank String username, @NotBlank @Email String email);
+    @Aggregation(pipeline = {
+            "{ '$match': { '$or': [ { 'username': ?0 }, { 'email': ?1 } ] } }",
+            "{ '$limit': 1 }",
+            "{ '$project': { 'username': 1, 'email': 1, '_id': 0 } }"
+    })
+    Optional<User> findLightByUsernameOrEmail(@NotBlank String username, @NotBlank @Email String email);
+
+    // INTERESTING QUERIES ============================================
+
+    @Aggregation(pipeline = {
+            "{ $match: { numGames: { $gt: ?0 }, hoursPlayed: { $gt: ?1 } } }",
+            "{ $project: { " +
+                        "_id: 1," +
+                    "    username: 1, " +
+                    "    role: 1, " +
+                    "    totalHours: '$hoursPlayed', " +
+                    "    numGames: 1, " +
+                    "    avgHoursPerGame: { $round: [{ $divide: ['$hoursPlayed', '$numGames'] }, 1] } " +
+                    "} }",
+            "{ $sort: { avgHoursPerGame: -1 } }",
+            "{ $limit: 15 }"
+        })
+    List<PlayerStatsDTO> findHardcoreGamers(int minGames, double minHours);
+
+    @Aggregation(pipeline = {
+
+            "{ $match: { reviewIds: { $exists: true, $not: { $size: 0 } } } }",
+
+            "{ $project: { " +
+                        "_id: 1," +
+                    "    username: 1, " +
+                    "    role: 1, " +
+                    "    pfpURL: 1, " +
+                    "    numGames: 1, " +
+                    "    numReviews: { $size: '$reviewIds' }, " +
+                    // if numGames is 0, we set a very high artificial score ( review number * 100)
+                    // otherwise we just do reviews / games
+                    "    warriorRatio: { $cond: [ " +
+                    "        { $eq: ['$numGames', 0] }, " +
+                    "        { $multiply: [{ $size: '$reviewIds' }, 100] }, " +
+                    "        { $divide: [{ $size: '$reviewIds' }, '$numGames'] } " +
+                    "    ] } " +
+                    "} }",
+
+            "{ $match: { warriorRatio: { $gt: 1 } } }",
+
+            "{ $sort: { warriorRatio: -1, numReviews: -1 } }",
+            "{ $limit: 15 }"
+    })
+    List<KeyboardWarriorDTO> getKeyboardWarriors();
+
+    @Aggregation(pipeline = {
+            "{ $match: { numGames: { $gt: 0 }} }",
+
+            "{ $project: { " +
+                        "_id: 1," +
+                    "    username: 1, " +
+                    "    pfpURL: 1, " +
+                    "    role: 1, " +
+                    "    numGames: 1, " +
+                    "    registrationDate: 1, " +
+                    "    gamesPerDay: { $divide: ['$numGames', { $divide: [ { $subtract: ['$$NOW', '$registrationDate'] } , 86400000] }] }  " +
+                    "} }",
+
+            "{ $sort: { gamesPerDay: -1 } }",
+            "{ $limit: 15 }"
+    })
+    List<ActiveGamerDTO> getMostActiveGamers();
 }

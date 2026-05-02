@@ -1,4 +1,4 @@
-package com.unipi.PlayerHive.model;
+package com.unipi.PlayerHive.model.user;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;

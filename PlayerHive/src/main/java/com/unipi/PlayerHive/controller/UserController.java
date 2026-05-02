@@ -3,7 +3,9 @@ package com.unipi.PlayerHive.controller;
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.users.*;
-import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.DTO.users.friends.FriendDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestDTO;
+import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -149,6 +151,23 @@ public class UserController {
         String userId = getAuthenticatedUserId();
         userService.deleteUser(userId);
         return ResponseEntity.ok("Account Deleted successfully");
+    }
+
+    // INTERESTING QUERIES ======================================================
+    //TODO ADD VARIABLES
+    @GetMapping("/getHardcoreGamers")
+    public ResponseEntity<List<PlayerStatsDTO>> getHardcoreGamers(){
+        return ResponseEntity.ok(userService.getHardcoreGamers());
+    }
+
+    @GetMapping("/getKeyboardWarriors")
+    public ResponseEntity<List<KeyboardWarriorDTO>> getKeyboardWarriors(){
+        return ResponseEntity.ok(userService.getKeyboardWarriors());
+    }
+
+    @GetMapping("/getMostActiveGamers")
+    public ResponseEntity<List<ActiveGamerDTO>> getMostActiveGamers(){
+        return ResponseEntity.ok(userService.getMostActiveGamers());
     }
 
 }

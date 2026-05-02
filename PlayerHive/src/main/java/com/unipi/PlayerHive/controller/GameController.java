@@ -37,7 +37,7 @@ public class GameController {
         return ResponseEntity.ok(gameService.searchGameByName(gameName,page,size));
     }
 
-    @GetMapping("showReviews/{gameId}")
+    @GetMapping("/showReviews/{gameId}")
     public ResponseEntity<List<ReviewDTO>> showGameReviews(@PathVariable @NotNull  @Size(min = 24, max = 24) String gameId,
                                                            @RequestParam(defaultValue = "0") @Min(0) int page,
                                                            @RequestParam(defaultValue = "25") @Min(25) @Max(100) int size){
@@ -56,5 +56,25 @@ public class GameController {
         return ResponseEntity.ok("Review deleted successfully");
     }
 
+    // INTERESTING QUERIES ============================================
+    //TODO ADD VARIABLES
+    @GetMapping("/getDeals")
+    public ResponseEntity<List<GameStatsDTO>> getDeals(){
+        return ResponseEntity.ok(gameService.getDeals());
+    }
 
+    @GetMapping("/getInvestments")
+    public ResponseEntity<List<GameInvestmentDTO>> getInvestments(){
+        return ResponseEntity.ok(gameService.getInvestments());
+    }
+
+    @GetMapping("/getDiscussed")
+    public ResponseEntity<List<GameStatsDTO>> getDiscussed(){
+        return ResponseEntity.ok(gameService.getDiscussed());
+    }
+
+    @GetMapping("/getTopGames")
+    public ResponseEntity<List<GameStatsDTO>> getTopGames(){
+        return ResponseEntity.ok(gameService.getTopGames());
+    }
 }

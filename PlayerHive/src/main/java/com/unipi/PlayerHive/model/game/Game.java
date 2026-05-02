@@ -1,11 +1,13 @@
-package com.unipi.PlayerHive.DTO.games;
+package com.unipi.PlayerHive.model.game;
 
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDate;
@@ -17,7 +19,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class LightGameDTO {
+@Document(collection = "games")
+public class Game {
     @Id
     private String id;
 
@@ -26,9 +29,12 @@ public class LightGameDTO {
     private LocalDate releaseDate;
     private Double price;
     private Integer discount;
+    private Double finalPrice;
+
     private String description;
 
     private List<ReviewDTO> recentReviews;
+    private List<OldGameReviewDTO> allReviews;
 
     @Field("image")
     private String imageURL;

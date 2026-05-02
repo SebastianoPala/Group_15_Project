@@ -1,9 +1,10 @@
-package com.unipi.PlayerHive.DTO.users;
+package com.unipi.PlayerHive.DTO.users.friends;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
@@ -11,20 +12,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Getter
 @Setter
-public class ProfileDTO {
-
+public class FriendRequestDTO {
+    @Field("user_id")
+    private String userId;
     private String username;
-
-    private String role;
-
     private String pfpURL;
-
-    private int numGames;
-
-    private float hoursPlayed;
-
-    private Integer friends;
-
-    private LocalDateTime registrationDate;
-
+    private LocalDateTime timestamp;
 }

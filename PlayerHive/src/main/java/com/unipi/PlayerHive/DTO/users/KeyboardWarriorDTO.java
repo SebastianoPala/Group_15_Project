@@ -3,20 +3,23 @@ package com.unipi.PlayerHive.DTO.users;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.springframework.data.annotation.Id;
 
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Getter
-@Setter
-public class UserSearchDTO {
+public class KeyboardWarriorDTO {
 
+    @Id
     private String id;
-
     private String username;
+    private String pfpURL;
 
     private String role;
 
-    private String pfpURL;
+    private Integer numGames;
+    private Integer numReviews;
+
+    private Double warriorRatio;
 
 }

@@ -8,8 +8,9 @@ import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.Review;
-import com.unipi.PlayerHive.model.User;
-import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.model.game.Game;
+import com.unipi.PlayerHive.model.user.User;
+import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
@@ -55,10 +56,10 @@ public class GameService {
                 .getUser();
     }
 
-    public GameInfoDTO getGameById(String gameId) { // manage high reviews number case
-        LightGameDTO game = gameRepository.findByIdLight(gameId).orElseThrow(() -> new NoSuchElementException("Game not found"));
+    public GameInfoDTO getGameById(String gameId) {
+        Game game = gameRepository.findByIdLight(gameId).orElseThrow(() -> new NoSuchElementException("Game not found"));
 
-        GameInfoDTO gameInfo = gameMapper.gameLightDTOToGameInfoDTO(game);
+        GameInfoDTO gameInfo = gameMapper.gameToGameInfoDTO(game);
 
         Float userScore = (game.getCountScore() > 0) ? game.getSumScore() / game.getCountScore() : null;
         gameInfo.setUserScore(userScore);
@@ -153,6 +154,25 @@ public class GameService {
 
         // clean the entry out of the user's reviewIds array too
         userRepository.removeReviewFromUser(requestingUser.getId(), new ObjectId(reviewId));
+    }
+
+    // INTERESTING QUERIES ====================
+
+    //TODO ADD VARIABLES
+    public List<GameStatsDTO> getDeals(){
+        return gameRepository.getQualityToPriceGames(5,1, 100,0);
+    }
+
+    public List<GameInvestmentDTO> getInvestments(){
+        return gameRepository.getTimeToPriceGames(1,1,100,0);
+    }
+
+    public List<GameStatsDTO> getDiscussed(){
+        return gameRepository.findMostDiscussedGames();
+    }
+
+    public List<GameStatsDTO> getTopGames(){
+        return gameRepository.getTopRatedGames(3);
     }
 
 }

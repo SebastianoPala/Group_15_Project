@@ -4,8 +4,8 @@ import com.unipi.PlayerHive.DTO.games.AddGameDTO;
 import com.unipi.PlayerHive.DTO.games.EditGameDTO;
 import com.unipi.PlayerHive.DTO.users.GameOwnerDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
-import com.unipi.PlayerHive.model.Game;
-import com.unipi.PlayerHive.model.GameNeo4j;
+import com.unipi.PlayerHive.model.game.Game;
+import com.unipi.PlayerHive.model.game.GameNeo4j;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
@@ -63,6 +63,22 @@ public class AdminService {
                 .toArray(String[]::new);
     }
 
+    double roundNumber(double num){
+        return ((double) Math.round(num * 100)) / 100;
+    }
+
+    double calculateFinalPrice(double price, double discount){
+        return price - (price * discount/100);
+    }
+
+    void fixPrices(Game game){
+        game.setPrice(roundNumber(game.getPrice()));
+
+        double finalPrice = roundNumber(calculateFinalPrice(game.getPrice(), game.getDiscount()));
+
+        game.setFinalPrice(finalPrice);
+    }
+
     @Transactional
     public void addGame(@Nonnull @Valid @RequestBody AddGameDTO newGame) {
 
@@ -72,9 +88,12 @@ public class AdminService {
 
         Game game = gameMapper.editGameDTOtoGame(newGame);
 
-        game.setAllReviews(new ArrayList<>()); // new games obviously have no reviews
+        fixPrices(game); // we round the price and calculate the final price
+
+        game.setAllReviews(new ArrayList<>());
         game.setRecentReviews(new ArrayList<>());
-        game.setTotalHoursPlayed((float) 0); // can this be added in the entity?
+        game.setTotalHoursPlayed((float) 0);
+
         game.setNumPlayers(0);
         game.setSumScore((float) 0);
         game.setCountScore(0);
@@ -96,6 +115,8 @@ public class AdminService {
         }
 
         copyNonNullProperties(editGame,game);
+
+        fixPrices(game); // we round the price and calculate the final price
 
         gameRepository.save(game);
         GameNeo4j gameNeo = gameNeo4jRepository.findById(gameId).orElseThrow(() -> new NoSuchElementException("Game not found on Neo4j"));

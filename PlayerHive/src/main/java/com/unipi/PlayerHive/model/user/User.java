@@ -1,7 +1,7 @@
-package com.unipi.PlayerHive.model;
+package com.unipi.PlayerHive.model.user;
 
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
-import com.unipi.PlayerHive.DTO.users.FriendRequestDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestDTO;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Past;
 import lombok.AllArgsConstructor;
@@ -12,6 +12,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -41,7 +42,10 @@ public class User {
     private float hoursPlayed;
 
     @Past
-    private LocalDate birthDate;
+    private LocalDate birthdate;
+
+    @Past
+    private LocalDateTime registrationDate;
 
     private Integer friends;
 

@@ -5,14 +5,18 @@ import com.unipi.PlayerHive.DTO.games.PlaytimeAchievementsDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.users.*;
+import com.unipi.PlayerHive.DTO.users.friends.FriendDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestContainerDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRequestMongoDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
-import com.unipi.PlayerHive.model.User;
+import com.unipi.PlayerHive.model.user.User;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
-import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.utility.ArrayPager;
 import com.unipi.PlayerHive.utility.batch.GameConsistencyManager;
 import com.unipi.PlayerHive.utility.batch.UserConsistencyManager;
@@ -200,7 +204,7 @@ public class UserService {
 
 
         try { // we first check if we already have a request from targetUser
-            this.approveRequestFromUser(targetUserId); //TODO TRANSACTIONAL DOES not work in function calls
+            this.approveRequestFromUser(targetUserId);
             return "The friendship has been established";
 
         } catch (NoSuchElementException ignored) {} // if no friend request was present, NoSuchElementException is thrown
@@ -300,7 +304,6 @@ public class UserService {
     @Transactional
     public void deleteUser(String userId){
 
-        //TODO, ADD CONSOLE LOGS
         User requestingUser = getAuthenticatedUser();
         String requesterId = requestingUser.getId();
 
@@ -346,5 +349,20 @@ public class UserService {
         userNeo4jRepository.deleteById(userId);
         userRepository.deleteById(userId);
 
+    }
+
+    // INTERESTING QUERIES ===========================================
+
+    //TODO ADD VARIABLES
+    public List<PlayerStatsDTO> getHardcoreGamers(){
+        return userRepository.findHardcoreGamers(5, 100);
+    }
+
+    public List<KeyboardWarriorDTO> getKeyboardWarriors(){
+        return userRepository.getKeyboardWarriors();
+    }
+
+    public List<ActiveGamerDTO> getMostActiveGamers(){
+        return userRepository.getMostActiveGamers();
     }
 }

@@ -2,7 +2,7 @@ package com.unipi.PlayerHive.utility.batch;
 
 import com.mongodb.bulk.BulkWriteResult;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
-import com.unipi.PlayerHive.model.Game;
+import com.unipi.PlayerHive.model.game.Game;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;

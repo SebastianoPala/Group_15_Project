@@ -10,8 +10,8 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.unipi.PlayerHive.model.User;
-import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.model.user.User;
+import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.service.MyUserDetailsService;
 
 import jakarta.servlet.FilterChain;

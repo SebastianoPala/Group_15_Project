@@ -20,6 +20,9 @@ public class GameInfoDTO {
     private LocalDate releaseDate;
     private Double price;
     private Integer discount;
+
+    private Double finalPrice;
+
     private String description;
 
     private List<ReviewDTO> recentReviews;

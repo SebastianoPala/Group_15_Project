@@ -3,20 +3,17 @@ package com.unipi.PlayerHive.DTO.users;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.springframework.data.annotation.Id;
 
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
-public class UserSearchDTO {
-
+public class PlayerStatsDTO {
+    @Id
     private String id;
-
     private String username;
-
     private String role;
-
-    private String pfpURL;
-
+    private float totalHours;
+    private int numGames;
+    private float avgHoursPerGame;
 }

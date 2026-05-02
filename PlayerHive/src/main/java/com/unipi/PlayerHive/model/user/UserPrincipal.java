@@ -1,4 +1,4 @@
-package com.unipi.PlayerHive.model;
+package com.unipi.PlayerHive.model.user;
 
 import java.util.Collection;
 import java.util.Collections;

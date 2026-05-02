@@ -1,11 +1,11 @@
 package com.unipi.PlayerHive.service;
 
-import com.unipi.PlayerHive.DTO.users.UserLoginDTO;
-import com.unipi.PlayerHive.DTO.users.UserRegistrationDTO;
+import com.unipi.PlayerHive.DTO.users.login.UserLoginDTO;
+import com.unipi.PlayerHive.DTO.users.login.UserRegistrationDTO;
 import com.unipi.PlayerHive.config.JwtUtils;
-import com.unipi.PlayerHive.model.User;
-import com.unipi.PlayerHive.model.UserNeo4j;
-import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.model.user.User;
+import com.unipi.PlayerHive.model.user.UserNeo4j;
+import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import jakarta.annotation.Nonnull;
@@ -18,8 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -42,10 +42,10 @@ public class AuthService {
         // todo if we are very fat, we can use access tables to check which operation is better, or add indexes maybe
 
         userRepository.findLightByUsernameOrEmail(dto.username(), dto.email()).ifPresent(user -> {
-            if (user.username().equals(dto.username())) {
+            if (user.getUsername().equals(dto.username())) {
                 throw new IllegalArgumentException("Username already exists");
             }
-            if (user.email().equals(dto.email())) {
+            if (user.getEmail().equals(dto.email())) {
                 throw new IllegalArgumentException("Email already exists");
             }
         });
@@ -56,7 +56,8 @@ public class AuthService {
         newUser.setUsername(dto.username());
         newUser.setPassword(encoder.encode(dto.password()));
         newUser.setEmail(dto.email());
-        newUser.setBirthDate(dto.birthDate());
+        newUser.setBirthdate(dto.birthDate());
+        newUser.setRegistrationDate(LocalDateTime.now());
         newUser.setRole("USER");
         newUser.setNumGames(0);
         newUser.setHoursPlayed(0);

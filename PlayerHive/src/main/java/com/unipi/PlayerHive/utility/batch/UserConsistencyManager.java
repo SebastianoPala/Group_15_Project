@@ -1,12 +1,9 @@
 package com.unipi.PlayerHive.utility.batch;
 
 import com.mongodb.bulk.BulkWriteResult;
-import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
 import com.unipi.PlayerHive.DTO.users.GameOwnerDTO;
-import com.unipi.PlayerHive.model.User;
-import com.unipi.PlayerHive.repository.games.GameRepository;
+import com.unipi.PlayerHive.model.user.User;
 import com.unipi.PlayerHive.repository.users.UserRepository;
-import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;

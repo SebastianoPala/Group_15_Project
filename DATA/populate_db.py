@@ -18,7 +18,7 @@ NEO4J_PASSWORD = "00000000"  # Updated password
 MONGO_URI = "mongodb://localhost:27017/"
 MONGO_DB_NAME = "PlayerHive"
 
-NUM_USERS = 10000            # Number of users to generate
+NUM_USERS = 15000            # Number of users to generate
 NUM_ROUNDS = 4
 
 
@@ -31,6 +31,7 @@ admin_user = {
     "password": bcrypt.hashpw("admin".encode('utf-8'), bcrypt.gensalt(rounds=NUM_ROUNDS)).decode('utf-8'),
     "email": "admin@admin.com",
     "birthdate": datetime(1776, 12, 4), 
+    "registrationDate": datetime.now() - timedelta(days=5 * 365),
     "role": "ADMIN",
     "friendRequests": [],
     "friends": 0,
@@ -58,6 +59,14 @@ def generate_random_date():
     """Generates a random datetime object between Jan 1, 2023 and today"""
     start_date = datetime(2023, 1, 1)
     end_date = datetime.now()
+    delta = end_date - start_date
+    random_seconds = random.randrange(int(delta.total_seconds()))
+    return start_date + timedelta(seconds=random_seconds)
+
+def generate_registration_date():
+    """Generates a random datetime object between 5 years ago and today"""
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=5 * 365)
     delta = end_date - start_date
     random_seconds = random.randrange(int(delta.total_seconds()))
     return start_date + timedelta(seconds=random_seconds)
@@ -216,17 +225,23 @@ def main():
         elif isinstance(raw_tags, list): 
             flat_genres = raw_tags
             
-        if random.random() < 0.70:
+        random_price = float(game_data.get("price", 0.0) if game_data.get("price") is not None else 0.0)
+
+        if random_price == 0 or random.random() < 0.70:
             discount = 0
         else:
             discount = random.choice(range(0, 95, 5))
         
+        finalPrice = random_price - (random_price * int(discount)/100)
+        
+
         games_list.append({
             "_id": {"$oid": generate_oid()},
             "name": game_data.get("name", ""),
             "release_date": format_to_datetime(game_data.get("release_date")),
-            "price": float(game_data.get("price", 0.0) if game_data.get("price") is not None else 0.0), 
+            "price": round(random_price,2),
             "discount": int(discount),
+            "finalPrice": round(finalPrice,2),
             "description": game_data.get("detailed_description"),
             "image": game_data.get("header_image"),
             "supportedOS": supported_os,
@@ -234,7 +249,7 @@ def main():
             "developers": game_data.get("developers", []),
             "publishers": game_data.get("publishers", []),
             "genres": flat_genres,
-            "raw_reviews": [] # Array temporaneo per l'elaborazione
+            "raw_reviews": [] 
         })
     print(f"   -> Successfully loaded and cleaned {len(games_list)} games.")
 
@@ -253,6 +268,7 @@ def main():
             "password": bcrypt.hashpw(username.encode('utf-8'), bcrypt.gensalt(rounds=NUM_ROUNDS)).decode('utf-8'),
             "email": username + "@hotmail.com",
             "birthdate": birthdate_dt, 
+            "registrationDate": generate_registration_date(),
             "role": "USER",
             "friendRequests": [],
             "friends": 0,

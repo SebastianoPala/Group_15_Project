@@ -1,7 +1,7 @@
 package com.unipi.PlayerHive.service;
 
-import com.unipi.PlayerHive.model.User;
-import com.unipi.PlayerHive.model.UserPrincipal;
+import com.unipi.PlayerHive.model.user.User;
+import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;

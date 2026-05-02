@@ -1,8 +1,8 @@
 package com.unipi.PlayerHive.repository.users;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
-import com.unipi.PlayerHive.DTO.users.FriendDTO;
-import com.unipi.PlayerHive.model.UserNeo4j;
+import com.unipi.PlayerHive.DTO.users.friends.FriendDTO;
+import com.unipi.PlayerHive.model.user.UserNeo4j;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -69,4 +69,7 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
             "MERGE (u2)-[:FRIENDS_WITH]->(u1) " +
             "RETURN count(u1) > 0")
     boolean createFriendship(String userId1, String userId2);
+
+    // INTERESTING QUERIES ===================================================
+
 }

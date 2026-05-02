@@ -1,4 +1,4 @@
-package com.unipi.PlayerHive.DTO.users;
+package com.unipi.PlayerHive.DTO.users.friends;
 
 import lombok.Getter;
 

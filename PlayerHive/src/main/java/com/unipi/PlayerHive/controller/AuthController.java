@@ -1,8 +1,8 @@
 package com.unipi.PlayerHive.controller;
 
-import com.unipi.PlayerHive.DTO.users.AccessTokenDTO;
-import com.unipi.PlayerHive.DTO.users.UserLoginDTO;
-import com.unipi.PlayerHive.DTO.users.UserRegistrationDTO;
+import com.unipi.PlayerHive.DTO.users.login.AccessTokenDTO;
+import com.unipi.PlayerHive.DTO.users.login.UserLoginDTO;
+import com.unipi.PlayerHive.DTO.users.login.UserRegistrationDTO;
 import com.unipi.PlayerHive.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

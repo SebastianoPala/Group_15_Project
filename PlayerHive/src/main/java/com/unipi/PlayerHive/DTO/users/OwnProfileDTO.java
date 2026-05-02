@@ -1,12 +1,13 @@
 package com.unipi.PlayerHive.DTO.users;
 
-import com.unipi.PlayerHive.model.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -26,7 +27,9 @@ public class OwnProfileDTO {
 
     private float hoursPlayed;
 
-    private LocalDate birthDate;
+    private LocalDate birthdate;
+
+    private LocalDateTime registrationDate;
 
     private Integer friends;
 
