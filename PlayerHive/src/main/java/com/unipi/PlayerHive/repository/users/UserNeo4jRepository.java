@@ -70,6 +70,17 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
             "RETURN count(u1) > 0")
     boolean createFriendship(String userId1, String userId2);
 
+    @Query("MATCH (u:User {id: $userId}) " +
+            "OPTIONAL MATCH (u)-[r:PLAYED]->(g:Game) " +
+            "WITH u, " +
+            "     g.id AS id, " +
+            "     r.hoursPlayed AS hoursPlayed " +
+            "DETACH DELETE u " +
+            "WITH id, hoursPlayed " +
+            "WHERE id IS NOT NULL " +
+            "RETURN id, hoursPlayed")
+    List<LibraryGameDTO> deleteUserAndRetrieveLibrary(String userId);
+
     // INTERESTING QUERIES ===================================================
 
 }

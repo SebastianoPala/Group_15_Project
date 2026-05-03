@@ -61,7 +61,7 @@ public interface UserRepository extends MongoRepository<User,String> {
 
     @Query("{ '_id': ?0 }")
     @Update("{ '$inc': { 'hoursPlayed': ?1, 'numGames': ?2 } }")
-    int updateUserStats(String userId, float playtimeDifference, int gameNumberToAdd);
+    int updateUserStats(String userId, float playtimeToAdd, int gameNumberToAdd);
 
     @Query(value = "{ 'email': ?0 }", fields = "{ 'friendRequests': 0, 'reviewIds':0 }")
     User findByEmail(String email);

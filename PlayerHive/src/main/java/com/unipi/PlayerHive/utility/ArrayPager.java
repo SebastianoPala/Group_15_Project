@@ -1,7 +1,6 @@
 package com.unipi.PlayerHive.utility;
 
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
 public class ArrayPager {

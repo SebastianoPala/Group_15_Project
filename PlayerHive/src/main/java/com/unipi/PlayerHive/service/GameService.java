@@ -91,7 +91,7 @@ public class GameService {
         GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,pager.getStart(),pager.getLimit());
 
         List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
-                oldReviewDTO.getReviewId().toString()).toList(); // todo ponder about the removal of users
+                oldReviewDTO.getReviewId().toString()).toList();
 
         return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
     }
@@ -147,7 +147,7 @@ public class GameService {
             else
                 throw new NoSuchElementException("The review does not exist");
         }
-         // todo DO WE INSTANTLY REMOVE THE REVIEW FROM THE GAME?
+
         int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
         if(modified != 1)
             throw new RuntimeException("The server couldn't delete the review due to inconsistencies");

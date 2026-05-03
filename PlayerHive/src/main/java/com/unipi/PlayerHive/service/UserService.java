@@ -19,7 +19,6 @@ import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.utility.ArrayPager;
 import com.unipi.PlayerHive.utility.batch.GameConsistencyManager;
-import com.unipi.PlayerHive.utility.batch.UserConsistencyManager;
 import com.unipi.PlayerHive.utility.map.UserMapper;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -47,18 +46,16 @@ public class UserService {
     private final GameNeo4jRepository gameNeo4jRepository;
     private final UserMapper userMapper;
 
-    private final UserConsistencyManager userConsistencyManager;
     private final GameConsistencyManager gameConsistencyManager;
 
     private final ReviewRepository reviewRepository;
 
-    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository, GameRepository gameRepository, UserMapper userMapper, GameNeo4jRepository gameNeo4jRepository, UserConsistencyManager userConsistencyManager, GameConsistencyManager gameConsistencyManager, ReviewRepository reviewRepository) {
+    public UserService(UserRepository userRepository, UserNeo4jRepository userNeo4jRepository, GameRepository gameRepository, UserMapper userMapper, GameNeo4jRepository gameNeo4jRepository, GameConsistencyManager gameConsistencyManager, ReviewRepository reviewRepository) {
         this.userRepository = userRepository;
         this.userNeo4jRepository = userNeo4jRepository;
         this.gameRepository = gameRepository;
         this.userMapper = userMapper;
         this.gameNeo4jRepository = gameNeo4jRepository;
-        this.userConsistencyManager = userConsistencyManager;
         this.gameConsistencyManager = gameConsistencyManager;
         this.reviewRepository = reviewRepository;
     }
@@ -115,33 +112,34 @@ public class UserService {
 
         Optional<PlaytimeAchievementsDTO> playAchiev = gameNeo4jRepository.findUserPlaytimeAndGameAchievements(userId, addGame.getGameId());
 
+        // PlaytimeAchievementsDTO contains (if present) the user's playtime on a game, and said game's total number of achievements.
         if(playAchiev.isPresent() && playAchiev.get().getAchievements() < addGame.getAchievements())
             throw new IllegalArgumentException("The achievement number exceeds the game's achievement number");
 
-        //float totalPlaytime = game.getTotalHoursPlayed() + addGame.getHoursPlayed(); TODO DELAY UPDATE
-        float userPlaytimeToAdd = addGame.getHoursPlayed();
-        int gameNumberToAdd = 0;
+        float playtimeToAdd = addGame.getHoursPlayed();
+        boolean gameAlreadyPresent = false;
 
-        if(playAchiev.isEmpty()){
-            // game.setNumPlayers(game.getNumPlayers() + 1 ); TODO DELAY UPDATE
-            gameNumberToAdd++;
-        }else{
-            //totalPlaytime -= userGamePlaytime.get().floatValue();
-            userPlaytimeToAdd -= playAchiev.get().getHoursPlayed().floatValue();
+        if (playAchiev.isPresent()) {
+            playtimeToAdd -= playAchiev.get().getHoursPlayed().floatValue(); // if the game was already in the library, we only add the difference
+            gameAlreadyPresent = true;
         }
 
-        if(userPlaytimeToAdd == 0 && gameNumberToAdd == 0)
+        if( playtimeToAdd == 0 && gameAlreadyPresent)
             return; // nothing to update
 
         boolean success = userNeo4jRepository.saveGameInLibrary(userId,addGame.getGameId(),addGame.getHoursPlayed().doubleValue(),addGame.getAchievements());
         if(!success){
             throw new IllegalArgumentException("The achievement number exceeds the game's achievement number");
         }
-        //game.setTotalHoursPlayed(totalPlaytime);
-        int modified = userRepository.updateUserStats(userId, userPlaytimeToAdd,gameNumberToAdd);
+
+
+        int modified = userRepository.updateUserStats(userId, playtimeToAdd,(gameAlreadyPresent) ? 0 : 1);
         if(modified<=0)
             throw new RuntimeException("The server was unable to increase the player's gaming stats");
-        //gameRepository.save(game);!! TODO delay update
+
+        modified = gameRepository.updateGameStats(addGame.getGameId(), playtimeToAdd,(gameAlreadyPresent) ? 0 : 1);
+        if(modified<=0)
+            throw new RuntimeException("The server was unable to increase the game's stats");
 
     }
 
@@ -152,13 +150,13 @@ public class UserService {
         Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, gameId)
                 .orElseThrow(() -> new NoSuchElementException("The game specified is not present in the user's library"));
 
-        //  TODO: when do we update the game stats? i think that a single query that updates every game is better
-        // game.setNumPlayers(game.getNumPlayers() -1 );
-
-        //game.setTotalHoursPlayed(game.getTotalHoursPlayed() - userGamePlaytime.floatValue());
         int modified = userRepository.updateUserStats(userId, -userGamePlaytime.floatValue(),-1);
         if(modified<=0)
             throw new RuntimeException("The server was unable to decrease the player's gaming stats");
+
+        modified = gameRepository.updateGameStats(gameId, -userGamePlaytime.floatValue(),-1);
+        if(modified<=0)
+            throw new RuntimeException("The server was unable to decrease the game's stats");
 
         boolean success = userNeo4jRepository.removeGameFromLibrary(userId,gameId);
         if(!success)
@@ -263,18 +261,12 @@ public class UserService {
         String userId = getAuthenticatedUser().getId();
 
         boolean success = userNeo4jRepository.removeFriendById(userId,friendId);
-        if(!success){
+        if(!success)
             throw new NoSuchElementException("No Friend was found matching the given Id");
-        }
 
-        int result = userRepository.editFriendCounter(userId, -1);
-        if(result != 1)
-            throw new RuntimeException("The server was unable to decrease the friend counter");
-
-        result = userRepository.editFriendCounter(friendId, -1);
-        if(result != 1)
-            throw new RuntimeException("The server was unable to decrease the friend counter");
-
+        int result = userRepository.decrementFriendCounterForUsers(List.of(userId, friendId));
+        if (result != 2)
+            throw new RuntimeException("The server was unable to decrease the friend counter for one or both users");
 
     }
 
@@ -294,13 +286,12 @@ public class UserService {
         UserReviewContainerDTO reviewContainer = userRepository.getUserReviews(userId,pager.getStart(),pager.getLimit());
 
         List<String> reviewIds = reviewContainer.getReviews().stream().map(userReviewDTO ->
-                userReviewDTO.getReviewId().toString()).toList(); // todo ponder about the removal of users
+                userReviewDTO.getReviewId().toString()).toList();
 
         return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
     }
 
 
-    // this function looks kinda heavy, probably better to delay its execution?
     @Transactional
     public void deleteUser(String userId){
 
@@ -325,30 +316,31 @@ public class UserService {
 
         if(!friendList.isEmpty()) {
             // decrements the "friend" value of every user found in the previous query
-            long modified = userConsistencyManager.adjustFriendCountersAfterUserRemoval(friendList.iterator());
+            long modified = userRepository.decrementFriendCounterForUsers(friendList);
 
             System.out.println(modified + " users had their friend counter decreased");
 
             friendList.clear();
         }
 
-        // we do not delete friend requests
-
-        // deletes all user's reviews
-        long deleted = reviewRepository.removeByUserId(new ObjectId(userId));
-
-        System.out.println(deleted + " reviews were deleted from the Review Collection");
+        // we do not delete friend requests, they will be deleted eventually
 
         // we remove the user's reviews from every single game
-        deleted = gameConsistencyManager.removeUserReviewsFromGames(userId);
+        long modified = gameConsistencyManager.removeUserReviewsFromGames(userId);
 
-        System.out.println(deleted + " games had their reviews updated");
+        System.out.println(modified + " games had their reviews updated");
 
-        // TODO: now that we removed reviews, the games score should be updated. Manage this!! DONT DO IT IN THIS FUNCTION THO
+        // deletes all user's reviews
+        modified = reviewRepository.removeByUserId(new ObjectId(userId));
 
-        userNeo4jRepository.deleteById(userId);
+        System.out.println(modified + " reviews were deleted from the Review Collection");
+
+
+        modified = gameConsistencyManager.adjustGameStatsAndRemove(userId);
+
+        System.out.println(modified + " games had their stats updated");
+
         userRepository.deleteById(userId);
-
     }
 
     // INTERESTING QUERIES ===========================================

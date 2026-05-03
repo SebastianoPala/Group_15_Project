@@ -13,9 +13,12 @@ import java.util.Optional;
 @Repository
 public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j,String>{
 
-    @Query("MATCH (u:User)-[r:PLAYED]->(g:Game {id: $gameId}) RETURN u.id as id, " +
-            " r.hoursPlayed as hoursPlayed")
-    List<GameOwnerDTO> findGameOwnersOf(String gameId);
+    @Query("MATCH (u:User)-[r:PLAYED]->(g:Game {id: $gameId}) " +
+            "WITH u, r LIMIT $batchSize " +
+            "WITH u.id AS id, r.hoursPlayed AS hoursPlayed, r " +
+            "DELETE r " +
+            "RETURN id, hoursPlayed")
+    List<GameOwnerDTO> deletePlayedEdgesInBatch(String gameId, int batchSize);
 
     // gets the USER's playtime and the GAME'S (NOT the user's) achievements
     @Query("MATCH (u:User {id: $userId})-[r:PLAYED]->(g:Game {id: $gameId}) " +

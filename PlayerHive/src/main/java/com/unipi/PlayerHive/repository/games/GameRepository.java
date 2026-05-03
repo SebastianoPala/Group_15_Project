@@ -31,6 +31,10 @@ public interface GameRepository extends MongoRepository<Game, String> {
     Optional<Game> findByIdLight(String gameId);
 
     @Query("{ '_id': ?0 }")
+    @Update("{ '$inc': { 'totalHoursPlayed': ?1, 'numPlayers': ?2 } }")
+    int updateGameStats(String userId, float playtimeToAdd, int userNumberToAdd);
+
+    @Query("{ '_id': ?0 }")
     @Update("{ '$push': { " +
             "    'allReviews': ?1, " +
             "    'recentReviews': { " +

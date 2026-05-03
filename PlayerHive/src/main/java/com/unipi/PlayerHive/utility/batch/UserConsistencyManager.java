@@ -3,48 +3,43 @@ package com.unipi.PlayerHive.utility.batch;
 import com.mongodb.bulk.BulkWriteResult;
 import com.unipi.PlayerHive.DTO.users.GameOwnerDTO;
 import com.unipi.PlayerHive.model.user.User;
-import com.unipi.PlayerHive.repository.users.UserRepository;
+import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 @Component
 public class UserConsistencyManager {
+    private final GameNeo4jRepository gameNeo4jRepository;
     private final MongoTemplate mongoTemplate;
-    private final UserRepository userRepository;
 
-    public UserConsistencyManager(MongoTemplate mongoTemplate, UserRepository userRepository) {
+    public UserConsistencyManager(GameNeo4jRepository gameNeo4jRepository, MongoTemplate mongoTemplate) {
+        this.gameNeo4jRepository = gameNeo4jRepository;
         this.mongoTemplate = mongoTemplate;
-
-        this.userRepository = userRepository;
     }
 
-    public long adjustUserStatsAfterGameRemoval(Iterator<GameOwnerDTO> iterator) {
+    public long adjustUserStatsAfterRemovalOf(String gameId) {
 
-        List<GameOwnerDTO> batch = new ArrayList<>();
         int batchSize = 10000;
 
         long modified = 0;
+        boolean relationshipsLeft = true;
 
-        while (iterator.hasNext()) {
-            batch.add(iterator.next());
+        while (relationshipsLeft) {
 
-            if (batch.size() == batchSize) {
-                modified += batchDecreaseUserGameStats(batch);
-                batch.clear();
-            }
+            List<GameOwnerDTO> owners = gameNeo4jRepository.deletePlayedEdgesInBatch(gameId,batchSize);
+            if(owners.isEmpty())
+                break;
+            else if(owners.size() < batchSize)
+                relationshipsLeft = false;
+
+            modified += batchDecreaseUserGameStats(owners);
         }
 
-        if (!batch.isEmpty()) {
-            modified += batchDecreaseUserGameStats(batch);
-        }
         return modified;
     }
 
@@ -64,26 +59,6 @@ public class UserConsistencyManager {
         BulkWriteResult result = bulkOps.execute();
 
         return result.getModifiedCount();
-}
-
-    public long adjustFriendCountersAfterUserRemoval(Iterator<String> iterator){
-        List<String> batch = new ArrayList<>();
-        int batchSize = 10000;
-
-        long modified = 0;
-
-        while (iterator.hasNext()) {
-            batch.add(iterator.next());
-
-            if (batch.size() == batchSize) {
-                modified += userRepository.decrementFriendCounterForUsers(batch);
-                batch.clear();
-            }
-        }
-
-        if (!batch.isEmpty()) {
-            modified += userRepository.decrementFriendCounterForUsers(batch);
-        }
-        return modified;
     }
+
 }

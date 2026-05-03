@@ -2,7 +2,6 @@ package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.AddGameDTO;
 import com.unipi.PlayerHive.DTO.games.EditGameDTO;
-import com.unipi.PlayerHive.DTO.users.GameOwnerDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.game.Game;
 import com.unipi.PlayerHive.model.game.GameNeo4j;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.beans.FeatureDescriptor;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
@@ -134,20 +132,11 @@ public class AdminService {
 
         System.out.println("A game with Id: " + gameId + " has been scheduled for deletion");
 
-        // we obtain from neo4j all the relationships that point to the game of interest
-        List<GameOwnerDTO> allOwners = gameNeo4jRepository.findGameOwnersOf(gameId);
-
-        System.out.println(allOwners.size() + " users have this game in their collection");
-
-        if(!allOwners.isEmpty()) {
-            //todo: this operation is super heavy, but games are basically never deleted, especially popular ones
-            //todo: if we do not perform the user update here, it makes the user related queries heavier
-            //all users "hoursPlayed" and "numGames" are decreased accordingly
-            long modified = userConsistencyManager.adjustUserStatsAfterGameRemoval(allOwners.iterator());
-            System.out.println(modified + " users had their stats updated");
-
-            allOwners.clear();
-        }
+        //todo: this operation is super heavy, but games are basically never deleted, especially popular ones
+        //todo: if we do not perform the user update here, it makes the user related queries heavier
+        //all users "hoursPlayed" and "numGames" are decreased accordingly
+        long modified = userConsistencyManager.adjustUserStatsAfterRemovalOf(gameId);
+        System.out.println(modified + " users had their stats updated");
 
         ObjectId gameIdObj = new ObjectId(gameId);
 
