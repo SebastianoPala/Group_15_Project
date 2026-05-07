@@ -2,13 +2,11 @@ package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.games.PlaytimeAchievementsDTO;
+import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.DTO.users.*;
-import com.unipi.PlayerHive.DTO.users.friends.FriendDTO;
-import com.unipi.PlayerHive.DTO.users.friends.FriendRequestContainerDTO;
-import com.unipi.PlayerHive.DTO.users.friends.FriendRequestDTO;
-import com.unipi.PlayerHive.DTO.users.friends.FriendRequestMongoDTO;
+import com.unipi.PlayerHive.DTO.users.friends.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.user.User;
 import com.unipi.PlayerHive.repository.ReviewRepository;
@@ -32,10 +30,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 
 
 @Service
@@ -76,6 +71,7 @@ public class UserService {
 
         User user = getAuthenticatedUser();
 
+        // more information is provided if the user requests his own profile
         OwnProfileDTO ownProfile = userMapper.userToOwnProfileDTO(user);
 
         ownProfile.setFriendRequestsNumber(userRepository.getFriendRequestsNumber(user.getId()));
@@ -83,19 +79,22 @@ public class UserService {
         return ownProfile;
     }
 
-    public Slice<UserSearchDTO> searchUser(String username, int page, int size) {
+    public UserSearchContainerDTO searchUser(String username, int page, int size) {
         Pageable pageable = PageRequest.of(page,size);
 
-        return userRepository.searchByUsernameContaining(username, pageable);
+        Slice<UserSearchDTO> result = userRepository.searchByUsernameContaining(username, pageable);
+        return new UserSearchContainerDTO(result.getContent(),result.isLast());
     }
 
-    public Page<LibraryGameDTO> getLibraryById(String userId, int page, int size) {
+    public LibraryContainerDTO getLibraryById(String userId, int page, int size) {
 
         if(!userRepository.existsById(userId))
             throw new NoSuchElementException("The requested user does not exist");
 
         Pageable pageable = PageRequest.of(page,size);
-        return userNeo4jRepository.findLibraryById(userId, pageable);
+        Page<LibraryGameDTO> library = userNeo4jRepository.findLibraryById(userId, pageable);
+
+        return new LibraryContainerDTO(library.getContent(), library.getTotalPages(), library.isLast());
     }
 
     @Transactional
@@ -110,28 +109,27 @@ public class UserService {
 
         String userId = getAuthenticatedUser().getId();
 
-        Optional<PlaytimeAchievementsDTO> playAchiev = gameNeo4jRepository.findUserPlaytimeAndGameAchievements(userId, addGame.getGameId());
-
         // PlaytimeAchievementsDTO contains (if present) the user's playtime on a game, and said game's total number of achievements.
-        if(playAchiev.isPresent() && playAchiev.get().getAchievements() < addGame.getAchievements())
+        // the game's achievement number is retrieved (and not the user's) in order to avoid performing two separate queries
+        PlaytimeAchievementsDTO playAchiev = gameNeo4jRepository.findUserPlaytimeAndGameAchievements(userId, addGame.getGameId());
+
+        boolean gameAlreadyPresent = playAchiev.getHoursPlayed() != null;
+
+        if(playAchiev.getAchievements() < addGame.getAchievements())
             throw new IllegalArgumentException("The achievement number exceeds the game's achievement number");
 
         float playtimeToAdd = addGame.getHoursPlayed();
-        boolean gameAlreadyPresent = false;
 
-        if (playAchiev.isPresent()) {
-            playtimeToAdd -= playAchiev.get().getHoursPlayed().floatValue(); // if the game was already in the library, we only add the difference
-            gameAlreadyPresent = true;
+        if (gameAlreadyPresent) {
+            playtimeToAdd -= playAchiev.getHoursPlayed().floatValue(); // if the game was already in the library, we only add the difference
         }
 
         if( playtimeToAdd == 0 && gameAlreadyPresent)
             return; // nothing to update
 
         boolean success = userNeo4jRepository.saveGameInLibrary(userId,addGame.getGameId(),addGame.getHoursPlayed().doubleValue(),addGame.getAchievements());
-        if(!success){
-            throw new IllegalArgumentException("The achievement number exceeds the game's achievement number");
-        }
-
+        if(!success)
+            throw new RuntimeException("The server was unable to add the game to the library");
 
         int modified = userRepository.updateUserStats(userId, playtimeToAdd,(gameAlreadyPresent) ? 0 : 1);
         if(modified<=0)
@@ -147,42 +145,58 @@ public class UserService {
     public void removeGameFromLibrary(String gameId) {
         String userId = getAuthenticatedUser().getId();
 
-        Double userGamePlaytime = userNeo4jRepository.findUserGamePlaytime(userId, gameId)
+        Double userGamePlaytime = userNeo4jRepository.removeGameAndGetPlaytime(userId, gameId)
                 .orElseThrow(() -> new NoSuchElementException("The game specified is not present in the user's library"));
 
         int modified = userRepository.updateUserStats(userId, -userGamePlaytime.floatValue(),-1);
         if(modified<=0)
             throw new RuntimeException("The server was unable to decrease the player's gaming stats");
 
+        // TODO
         modified = gameRepository.updateGameStats(gameId, -userGamePlaytime.floatValue(),-1);
         if(modified<=0)
             throw new RuntimeException("The server was unable to decrease the game's stats");
-
-        boolean success = userNeo4jRepository.removeGameFromLibrary(userId,gameId);
-        if(!success)
-            throw new RuntimeException("The server was unable to remove the game from the library");
     }
 
-    public Page<FriendDTO> getFriendListById(String userId, int page, int size) {
+    public FriendContainerDTO getFriendListById(String userId, int page, int size) {
         if(!userRepository.existsById(userId))
             throw new NoSuchElementException("The requested user does not exist");
         Pageable pageable = PageRequest.of(page,size);
-        return userNeo4jRepository.findUsersFriends(userId, pageable);
+        Page<FriendDTO> friends = userNeo4jRepository.findUsersFriends(userId, pageable);
+
+        return new FriendContainerDTO(friends.getContent(), friends.getTotalPages(), friends.isLast());
     }
 
-    public List<FriendRequestDTO> getFriendRequests(int page, int size) {
+    public FriendRequestContainerDTO getFriendRequests(int page, int size) {
         String userId = getAuthenticatedUser().getId();
 
         int friendRequestNumber = userRepository.getFriendRequestsNumber(userId);
 
+        // new friend requests are appended to the array, ArrayPager is needed
         ArrayPager pager = new ArrayPager(friendRequestNumber, page, size);
 
-        if(friendRequestNumber == 0 || pager.isOutOfBounds())
-            return new ArrayList<>();
+        List<FriendRequestDTO> friendRequests = new ArrayList<>();
+        int numPages;
+        boolean isLastPage;
 
-        FriendRequestContainerDTO friendRequestContainer = userRepository.findFriendRequestsById(userId,pager.getStart(),pager.getLimit());
+        if(friendRequestNumber >= 0 && !pager.isOutOfBounds()){
 
-        return friendRequestContainer.getFriendRequests();
+            List<FriendRequestMongoDTO> friendRequestsMongo = userRepository.findFriendRequestsById(userId,pager.getStart(),pager.getLimit()).getFriendRequests();
+
+            for (int i = friendRequestsMongo.size() - 1; i >= 0; i--){
+                FriendRequestMongoDTO fm = friendRequestsMongo.get(i);
+                friendRequests.add(new FriendRequestDTO(fm.getUserId().toString(),fm.getUsername(),fm.getPfpURL(),fm.getTimestamp()));
+            }
+            // friend requests are now in chronological order
+
+            numPages = pager.getNumPages();
+            isLastPage = pager.isLastPage();
+        } else {
+            numPages = 0;
+            isLastPage = true;
+        }
+
+        return new FriendRequestContainerDTO(friendRequests,numPages,isLastPage);
     }
 
     @Transactional
@@ -209,7 +223,8 @@ public class UserService {
 
         FriendRequestMongoDTO requestDTO = new FriendRequestMongoDTO(new ObjectId(userId),user.getUsername(),user.getPfpURL(), LocalDateTime.now());
 
-        int modified = userRepository.addFriendRequest(targetUserId,requestDTO.getUserId(),requestDTO); // add controls to return value
+        // the friend request is appended to the array
+        int modified = userRepository.addFriendRequest(targetUserId,requestDTO.getUserId(),requestDTO);
         if(modified != 1)
             throw new ResourceAlreadyExistsException("The friend request is already present");
 
@@ -223,22 +238,24 @@ public class UserService {
         if(targetUserId.length() != 24) // prevents ObjectId constructor exception
             throw new IllegalArgumentException("The input given is not a valid user Id");
 
+        int result;
+
         if(!userRepository.existsById(targetUserId)){
-            int result = userRepository.removeFriendRequest(userId,new ObjectId(targetUserId));
+            // cleaning up the friend request of a deleted user
+            result = userRepository.removeFriendRequest(userId,new ObjectId(targetUserId));
             if(result == 1)
                 return "The profile that sent the friend request no longer exists. The friend request has been removed";
             else
                 throw new NoSuchElementException("Friend request was not present!");
         }
 
-        int result = userRepository.acceptFriendRequest(userId,new ObjectId(targetUserId));
+        result = userRepository.acceptFriendRequest(userId,new ObjectId(targetUserId));
         if(result != 1)
             throw new NoSuchElementException("Friend request was not present!");
 
         result = userRepository.editFriendCounter(targetUserId, 1);
-        if(result != 1){
+        if(result != 1)
             throw new RuntimeException("The server couldn't increase the user's friend counter");
-        }
 
         boolean success = userNeo4jRepository.createFriendship(userId,targetUserId);
         if(!success)
@@ -249,8 +266,10 @@ public class UserService {
 
     public void removeRequestFromUser(String targetUserId) {
         String userId = getAuthenticatedUser().getId();
+
         //if(!userRepository.existsById(userId)) if the user does not exist, the request will simply not be present
         // ...
+
         int result = userRepository.removeFriendRequest(userId,new ObjectId(targetUserId));
         if(result != 1)
             throw new NoSuchElementException("Friend request was not present!");
@@ -260,35 +279,48 @@ public class UserService {
     public void removeFriend(String friendId) {
         String userId = getAuthenticatedUser().getId();
 
+        if(userId.equals(friendId))
+            throw new IllegalArgumentException("The user is attempting to remove himself");
+
         boolean success = userNeo4jRepository.removeFriendById(userId,friendId);
         if(!success)
             throw new NoSuchElementException("No Friend was found matching the given Id");
 
         int result = userRepository.decrementFriendCounterForUsers(List.of(userId, friendId));
         if (result != 2)
-            throw new RuntimeException("The server was unable to decrease the friend counter for one or both users");
+            throw new RuntimeException("The server was unable to decrease the friend counters");
 
     }
 
-
-    public List<ReviewDTO> getUserReviews(String userId, int page, int size) {
+    public ReviewContainerDTO getUserReviews(String userId, int page, int size) {
         if(!userRepository.existsById(userId))
             throw new NoSuchElementException("The user does not exist");
 
+        List<ReviewDTO> reviews;
+        int numPages;
+        boolean isLastPage;
+
         int reviewNumber = userRepository.getReviewNumber(userId);
 
+        // new user reviews are appended to the array, Array Pager is required
         ArrayPager pager = new ArrayPager(reviewNumber, page, size);
 
-        if(reviewNumber == 0 || pager.isOutOfBounds())
-            return new ArrayList<>();
+        if(reviewNumber >= 0 && !pager.isOutOfBounds()) {
 
+            List<UserReviewDTO> userReviews = userRepository.getUserReviews(userId, pager.getStart(), pager.getLimit()).getReviews();
 
-        UserReviewContainerDTO reviewContainer = userRepository.getUserReviews(userId,pager.getStart(),pager.getLimit());
+            List<String> reviewIds = userReviews.stream().map(userReviewDTO -> userReviewDTO.getReviewId().toString()).toList();
 
-        List<String> reviewIds = reviewContainer.getReviews().stream().map(userReviewDTO ->
-                userReviewDTO.getReviewId().toString()).toList();
+            reviews = reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+            numPages = pager.getNumPages();
+            isLastPage = pager.isLastPage();
+        } else{
+            reviews = new ArrayList<>();
+            numPages = 0;
+            isLastPage = true;
+        }
 
-        return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+        return new ReviewContainerDTO(reviews,numPages,isLastPage);
     }
 
 
@@ -300,15 +332,14 @@ public class UserService {
 
         boolean isAdmin = requestingUser.getRole().equalsIgnoreCase("ADMIN");
 
-        if(!isAdmin && !requesterId.equals(userId)){
-            throw new RuntimeException("You can't delete another user's profile"); //TODO ADD NEW EXCEPTION TYPE
-        }
+        if(!isAdmin) {
+            if (!requesterId.equals(userId))
+                throw new IllegalArgumentException("You can't delete another user's profile");
 
-        if(isAdmin && !userRepository.existsById(userId))
-            throw new NoSuchElementException("The user requested for deletion does not exist");
+        } else if (!userRepository.existsById(userId))
+                throw new NoSuchElementException("The user requested for deletion does not exist");
 
         System.out.println("A user with Id: " + userId + " has been scheduled for deletion");
-
 
         List<String> friendList = userNeo4jRepository.findAllUsersFriend(userId);
 
@@ -336,7 +367,7 @@ public class UserService {
         System.out.println(modified + " reviews were deleted from the Review Collection");
 
 
-        modified = gameConsistencyManager.adjustGameStatsAndRemove(userId);
+        modified = gameConsistencyManager.adjustGameStatsAndRemoveUserNode(userId);
 
         System.out.println(modified + " games had their stats updated");
 

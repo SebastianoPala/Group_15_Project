@@ -1,7 +1,7 @@
 package com.unipi.PlayerHive.repository.games;
 
 import com.unipi.PlayerHive.DTO.games.*;
-import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.listContainers.OldGameReviewArrayDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
 import org.bson.types.ObjectId;
@@ -58,15 +58,15 @@ public interface GameRepository extends MongoRepository<Game, String> {
 
     @Aggregation(pipeline = {
             "{ '$match': { '_id': ?0 } }",
-            "{ '$project': { '_id': 0, 'count': { '$size': '$allReviews' } } }"
+            "{ '$project': { '_id': 0, 'countScore': 1 } }"
     })
     int getReviewNumber(String gameId);
 
     @Aggregation(pipeline = {
             "{ '$match': { '_id': ?0 } }",
-            "{ '$project': { 'reviews': { '$slice': ['$allReviews', ?1, ?2] } } }"
+            "{ '$project': { '_id': 0, 'reviews': { '$slice': ['$allReviews', ?1, ?2] } } }"
     })
-    GameReviewContainerDTO getGameReviews(String gameId, int skip, int limit);
+    OldGameReviewArrayDTO getGameReviews(String gameId, int skip, int limit);
 
     // INTERESTING QUERIES ===========================================
 

@@ -25,5 +25,5 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
     Review removeByIdAndUserId(String reviewId, ObjectId requesterId);
 
     @Query("{ '_id': { $in: ?0 } }")
-    List<ReviewScoreDTO> findGameScoreByIdIn(List<ObjectId> reviewIds);
+    List<ReviewScoreDTO> findGameScoreByIdIn(List<String> reviewIds);
 }

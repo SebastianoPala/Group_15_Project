@@ -3,9 +3,11 @@ package com.unipi.PlayerHive.model.user;
 import java.util.Collection;
 import java.util.Collections;
 
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+@Getter
 public class UserPrincipal implements UserDetails {
     private final User user;
     public UserPrincipal(User user){
@@ -41,8 +43,5 @@ public class UserPrincipal implements UserDetails {
     @Override 
     public boolean isEnabled(){
         return true;
-    }
-    public User getUser(){
-        return user;
     }
 }

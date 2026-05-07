@@ -3,7 +3,6 @@ package com.unipi.PlayerHive.utility.batch;
 import com.mongodb.bulk.BulkWriteResult;
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewScoreDTO;
-import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.model.game.Game;
 import com.unipi.PlayerHive.repository.ReviewRepository;
 import com.unipi.PlayerHive.repository.users.UserNeo4jRepository;
@@ -43,8 +42,8 @@ public class GameConsistencyManager {
         long modified = 0;
 
         while(reviews_left){
-            List<ObjectId> userReviews = userRepository.getUserReviews(userId,step,page_size).getReviews().stream()
-                    .map(UserReviewDTO::getReviewId).toList();
+            List<String> userReviews = userRepository.getUserReviews(userId,step,page_size).getReviews().stream()
+                    .map(userReviewDTO -> userReviewDTO.getReviewId().toString()).toList();
             step += page_size;
 
             if(userReviews.isEmpty())
@@ -65,8 +64,8 @@ public class GameConsistencyManager {
             for (ReviewScoreDTO review : reviews) {
                 Query query = new Query(Criteria.where("_id").is(review.getGameId()));
 
-                Update update = new Update().pull("recentReviews", new Document("_id", review.getId()))
-                        .pull("allReviews", new Document("review_id", review.getId()))
+                Update update = new Update().pull("recentReviews", new Document("_id",review.getId()))
+                        .pull("allReviews", new Document("review_id", new ObjectId(review.getId())))
                         .inc("sumScore", -review.getScore())
                         .inc("countScore", -1);
 
@@ -81,7 +80,7 @@ public class GameConsistencyManager {
         return modified;
     }
 
-    public long adjustGameStatsAndRemove(String userId){
+    public long adjustGameStatsAndRemoveUserNode(String userId){
         long modified = 0;
 
         List<LibraryGameDTO> targetLibrary = userNeo4jRepository.deleteUserAndRetrieveLibrary(userId);

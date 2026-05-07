@@ -1,11 +1,7 @@
 package com.unipi.PlayerHive.service;
 
 import com.unipi.PlayerHive.DTO.games.*;
-import com.unipi.PlayerHive.DTO.reviews.OldGameReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.GameReviewContainerDTO;
-import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
-import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
+import com.unipi.PlayerHive.DTO.reviews.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import com.unipi.PlayerHive.model.Review;
 import com.unipi.PlayerHive.model.game.Game;
@@ -70,30 +66,47 @@ public class GameService {
         return gameInfo;
     }
 
-    public Slice<GameSearchDTO> searchGameByName(String gameName, int page, int size) {
+    public GameSearchContainerDTO searchGameByName(String gameName, int page, int size) {
         Pageable pageable = PageRequest.of(page,size);
 
-        return gameRepository.searchByNameContaining(gameName, pageable);
+        Slice<GameSearchDTO> result = gameRepository.searchByNameContaining(gameName, pageable);
+
+        return new GameSearchContainerDTO(result.getContent(),result.isLast());
     }
 
-    public List<ReviewDTO> getGameReviews(String gameId, int page, int size) {
+    public ReviewContainerDTO getGameReviews(String gameId, int page, int size) {
 
         if(!gameRepository.existsById(gameId))
             throw new NoSuchElementException("The game does not exist");
 
         int reviewNumber = gameRepository.getReviewNumber(gameId);
 
+        // the embedded allReviews array is ordered by timestamp ascending (new reviews are appended at the end of the
+        // array) therefore we need to calculate the requested array portion using the ArrayPager class
         ArrayPager pager = new ArrayPager(reviewNumber,page,size);
 
-        if(reviewNumber == 0 || pager.isOutOfBounds())
-            return new ArrayList<>();
+        List<ReviewDTO> reviews;
+        int numPages;
+        boolean isLastPage;
 
-        GameReviewContainerDTO reviewContainer = gameRepository.getGameReviews(gameId,pager.getStart(),pager.getLimit());
+        if(reviewNumber >= 0 && !pager.isOutOfBounds()) {
 
-        List<String> reviewIds = reviewContainer.getReviews().stream().map(oldReviewDTO ->
-                oldReviewDTO.getReviewId().toString()).toList();
+            List<OldGameReviewDTO> reviewLightDocList = gameRepository.getGameReviews(gameId, pager.getStart(), pager.getLimit()).getReviews();
 
-        return reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+            List<String> reviewIds = reviewLightDocList.stream()
+                    .map(oldGameReviewDTO -> oldGameReviewDTO.getReviewId().toString()).toList();
+
+            reviews = reviewRepository.findByIdInOrderByTimestampDesc(reviewIds);
+            numPages = pager.getNumPages();
+            isLastPage = pager.isLastPage();
+
+        } else{
+            reviews = new ArrayList<>();
+            numPages = 0;
+            isLastPage = true;
+        }
+
+        return new ReviewContainerDTO(reviews,numPages,isLastPage);
     }
 
     @Transactional
@@ -112,17 +125,19 @@ public class GameService {
         Review review = new Review(null,new ObjectId(gameId),userIdObj,user.getUsername(),user.getPfpURL(),
                                             addReviewDTO.getReviewText(), addReviewDTO.getScore(), LocalDateTime.now());
 
+        // the review is saved in the Review collection ...
         Review savedReview = reviewRepository.save(review);
 
         ReviewDTO recentReview = reviewMapper.reviewToRecentReviewDTO(savedReview);
 
         OldGameReviewDTO oldReview = new OldGameReviewDTO(new ObjectId(recentReview.getId()),addReviewDTO.getScore());
 
+        // ... in the recentReviews array (ready for retrieval), and in the allReviews array (as a lightweight version)
         int modified = gameRepository.addReviewToGame(gameId,oldReview , recentReview, addReviewDTO.getScore());
         if(modified != 1)
             throw new RuntimeException("An error has occurred when adding the review to the game");
 
-        // keep a lightweight {reviewId, gameId} entry on the user so we can clean up their reviews if they ever get deleted
+        // the review id and the game id are added to the user document as well
         UserReviewDTO userReview = new UserReviewDTO(new ObjectId(savedReview.getId()), new ObjectId(gameId));
         userRepository.addReviewToUser(userId, userReview);
     }
@@ -130,7 +145,7 @@ public class GameService {
     @Transactional
     public void deleteReview(String reviewId) {
 
-        // only the review author or an admin can delete this, anyone else gets rejected :/
+        // only the review author or an admin can delete the requested review, anyone else gets rejected :/
         User requestingUser = getAuthenticatedUser();
         Review deletedReview;
 
@@ -148,6 +163,7 @@ public class GameService {
                 throw new NoSuchElementException("The review does not exist");
         }
 
+        // the review is deleted from both the game's review arrays
         int modified = gameRepository.deleteReviewFromGame(deletedReview.getGameId(),deletedReview.getId(),-deletedReview.getScore());
         if(modified != 1)
             throw new RuntimeException("The server couldn't delete the review due to inconsistencies");
@@ -159,6 +175,7 @@ public class GameService {
     // INTERESTING QUERIES ====================
 
     //TODO ADD VARIABLES
+    //TODO USE QUERIES THAT USE THE SCORES IN THE EMBEDDED ARRAY, OR REMOVE THEM
     public List<GameStatsDTO> getDeals(){
         return gameRepository.getQualityToPriceGames(5,1, 100,0);
     }

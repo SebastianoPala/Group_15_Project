@@ -32,6 +32,7 @@ public class SecuritySpringBoot {
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(request -> request
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // for swagger
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/games/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/user/My*").authenticated()

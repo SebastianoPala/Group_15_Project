@@ -1,9 +1,9 @@
 package com.unipi.PlayerHive.repository.users;
 
-import com.unipi.PlayerHive.DTO.reviews.UserReviewContainerDTO;
+import com.unipi.PlayerHive.DTO.listContainers.FriendRequestMongoArrayDTO;
+import com.unipi.PlayerHive.DTO.listContainers.UserReviewArrayDTO;
 import com.unipi.PlayerHive.DTO.reviews.UserReviewDTO;
 import com.unipi.PlayerHive.DTO.users.*;
-import com.unipi.PlayerHive.DTO.users.friends.FriendRequestContainerDTO;
 import com.unipi.PlayerHive.DTO.users.friends.FriendRequestMongoDTO;
 import com.unipi.PlayerHive.model.user.User;
 import jakarta.validation.constraints.Email;
@@ -22,6 +22,14 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends MongoRepository<User,String> {
+
+    @Aggregation(pipeline = {
+            "{ '$match': { '$or': [ { 'username': ?0 }, { 'email': ?1 } ] } }",
+            "{ '$limit': 1 }",
+            "{ '$project': { 'username': 1, 'email': 1, '_id': 0 } }"
+    })
+    Optional<User> findLightByUsernameOrEmail(@NotBlank String username, @NotBlank @Email String email);
+
     @Query("{ 'username': { $regex: ?0, $options: 'i' } }" +
             "{ '$project': { 'id': '$_id', 'username': 1, 'role': 1, 'pfpURL':1 } }")
     Slice<UserSearchDTO> searchByUsernameContaining(String username, Pageable pageable);
@@ -45,11 +53,12 @@ public interface UserRepository extends MongoRepository<User,String> {
     })
     int getFriendRequestsNumber(String userId);
 
+    // TODO ADD CONTAINER
     @Aggregation(pipeline = {
             "{ '$match': { '_id': ?0 } }",
             "{ '$project': { 'friendRequests': { '$slice': ['$friendRequests', ?1, ?2] } } }"
     })
-    FriendRequestContainerDTO findFriendRequestsById(String id, int skip, int limit);
+    FriendRequestMongoArrayDTO findFriendRequestsById(String id, int skip, int limit);
 
     @Query("{ '_id' : ?0 }")
     @Update("{ '$inc' : { 'friends' : ?1 } }")
@@ -83,7 +92,7 @@ public interface UserRepository extends MongoRepository<User,String> {
             "{ '$match': { '_id': ?0 } }",
             "{ '$project': { 'reviews': { '$slice': ['$reviewIds', ?1, ?2] } } }"
     })
-    UserReviewContainerDTO getUserReviews(String userId, int skip, int limit);
+    UserReviewArrayDTO getUserReviews(String userId, int skip, int limit);
 
     // push a new {reviewId, gameId} pair into the user's reviewIds array when they write a review
     @Query("{ '_id': ?0 }")
@@ -102,12 +111,6 @@ public interface UserRepository extends MongoRepository<User,String> {
     @Update("{ '$pull': { 'reviewIds': { 'game_id': ?0 } } }")
     long removeAllGameReviewsFromUsers(ObjectId gameId);
 
-    @Aggregation(pipeline = {
-            "{ '$match': { '$or': [ { 'username': ?0 }, { 'email': ?1 } ] } }",
-            "{ '$limit': 1 }",
-            "{ '$project': { 'username': 1, 'email': 1, '_id': 0 } }"
-    })
-    Optional<User> findLightByUsernameOrEmail(@NotBlank String username, @NotBlank @Email String email);
 
     // INTERESTING QUERIES ============================================
 
