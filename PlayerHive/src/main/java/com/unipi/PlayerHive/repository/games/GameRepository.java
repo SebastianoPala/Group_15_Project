@@ -1,5 +1,8 @@
 package com.unipi.PlayerHive.repository.games;
 
+import com.unipi.PlayerHive.DTO.analytics.GenreStatsDTO;
+import com.unipi.PlayerHive.DTO.analytics.OsPlatformStatsDTO;
+import com.unipi.PlayerHive.DTO.analytics.ReleaseYearStatsDTO;
 import com.unipi.PlayerHive.DTO.games.*;
 import com.unipi.PlayerHive.DTO.listContainers.OldGameReviewArrayDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewDTO;
@@ -129,4 +132,28 @@ public interface GameRepository extends MongoRepository<Game, String> {
     })
     List<GameStatsDTO> getTopRatedGames(int minReviews);
 
+    @Aggregation(pipeline = {
+        "{ $match: { countScore: { $gt: 0 }, numPlayers: { $gt: 0 } } }",
+        "{ $project: { genres: 1, avgScore: { $divide: ['$sumScore', '$countScore'] }, avgHoursPerPlayer: { $divide: ['$totalHoursPlayed', '$numPlayers'] } } }",
+        "{ $unwind: '$genres' }",
+        "{ $group: {_id : '$genres', avgScore: { $avg: '$avgScore' }, avgHoursPerPlayer: { $avg: '$avgHoursPerPlayer' }, totalGames: { $sum: 1 } } }",
+        "{ $sort: { avgScore: -1 } }"
+    })
+    List<GenreStatsDTO> getGenreStats();
+
+    @Aggregation(pipeline = {
+        "{ $match: { countScore: { $gt: 0 } } }",
+        "{ $project: { osCount: { $size: '$supportedOS' }, avgScore: { $divide: ['$sumScore', '$countScore'] } } }",
+        "{ $group: { _id: '$osCount', avgScore: { $avg: '$avgScore' }, totalGames: { $sum: 1 } } }",
+        "{ $sort: { _id: 1 } }"
+    })
+    List<OsPlatformStatsDTO> getOsPlatformStats();
+    
+    @Aggregation(pipeline = {
+        "{ $match: { countScore: { $gt: 0 }, release_date: { $ne: null } } }",
+        "{ $project: { releaseYear: { $year: '$release_date' }, avgScore: { $divide: ['$sumScore', '$countScore'] } } }",
+        "{ $group: { _id: '$releaseYear', avgScore: { $avg: '$avgScore' }, totalGames: { $sum: 1 } } }",
+        "{ $sort: { _id: 1 } }"
+    })
+    List<ReleaseYearStatsDTO> getReleaseYearStats();
 }

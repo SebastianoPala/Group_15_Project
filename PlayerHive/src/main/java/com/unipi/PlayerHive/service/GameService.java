@@ -1,5 +1,8 @@
 package com.unipi.PlayerHive.service;
 
+import com.unipi.PlayerHive.DTO.analytics.GenreStatsDTO;
+import com.unipi.PlayerHive.DTO.analytics.OsPlatformStatsDTO;
+import com.unipi.PlayerHive.DTO.analytics.ReleaseYearStatsDTO;
 import com.unipi.PlayerHive.DTO.games.*;
 import com.unipi.PlayerHive.DTO.reviews.*;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
@@ -174,22 +177,33 @@ public class GameService {
 
     // INTERESTING QUERIES ====================
 
-    //TODO ADD VARIABLES
     //TODO USE QUERIES THAT USE THE SCORES IN THE EMBEDDED ARRAY, OR REMOVE THEM
-    public List<GameStatsDTO> getDeals(){
-        return gameRepository.getQualityToPriceGames(5,1, 100,0);
+    public List<GameStatsDTO> getDeals(int minReviews, double minPrice, double maxPrice, double minRating){
+        return gameRepository.getQualityToPriceGames(minReviews, minPrice, maxPrice, minRating);
     }
 
-    public List<GameInvestmentDTO> getInvestments(){
-        return gameRepository.getTimeToPriceGames(1,1,100,0);
+    public List<GameInvestmentDTO> getInvestments(int minPlayers, double minPrice, double maxPrice, double minAvgTime){
+        return gameRepository.getTimeToPriceGames(minPlayers, minPrice, maxPrice, minAvgTime);
     }
 
     public List<GameStatsDTO> getDiscussed(){
         return gameRepository.findMostDiscussedGames();
     }
 
-    public List<GameStatsDTO> getTopGames(){
-        return gameRepository.getTopRatedGames(3);
+    public List<GameStatsDTO> getTopGames(int minReviews){
+        return gameRepository.getTopRatedGames(minReviews);
+    }
+
+    public List<GenreStatsDTO> getGenreStats(){
+        return gameRepository.getGenreStats();
+    }
+
+    public List<OsPlatformStatsDTO> getOsPlatformStats(){
+        return gameRepository.getOsPlatformStats();
+    }
+
+    public List<ReleaseYearStatsDTO> getReleaseYearStats(){
+        return gameRepository.getReleaseYearStats();
     }
 
 }

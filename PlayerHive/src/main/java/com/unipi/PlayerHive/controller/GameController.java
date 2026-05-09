@@ -1,5 +1,8 @@
 package com.unipi.PlayerHive.controller;
 
+import com.unipi.PlayerHive.DTO.analytics.GenreStatsDTO;
+import com.unipi.PlayerHive.DTO.analytics.OsPlatformStatsDTO;
+import com.unipi.PlayerHive.DTO.analytics.ReleaseYearStatsDTO;
 import com.unipi.PlayerHive.DTO.games.*;
 import com.unipi.PlayerHive.DTO.reviews.AddReviewDTO;
 import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
@@ -76,24 +79,85 @@ public class GameController {
     }
 
     // INTERESTING QUERIES ============================================
-    //TODO ADD VARIABLES
+    
     @GetMapping("/getDeals")
-    public ResponseEntity<List<GameStatsDTO>> getDeals(){
-        return ResponseEntity.ok(gameService.getDeals());
+    @Operation(
+        summary = "Get best value games",
+        description = "Returns games sorted by rating-to-price ratio. Filter by price range and minimum rating. Only games with at least minReviews reviews are included."
+    )
+    @ApiResponse(responseCode = "200", description = "Games retrieved successfully")
+    public ResponseEntity<List<GameStatsDTO>> getDeals(
+        @RequestParam(defaultValue = "5") @Min(1) int minReviews,
+        @RequestParam(defaultValue = "1") @Min(0) double minPrice,
+        @RequestParam(defaultValue = "100") @Min(1) @Max(1000) double maxPrice,
+        @RequestParam(defaultValue = "0") @Min(0) @Max(10) double minRating
+    ){
+        return ResponseEntity.ok(gameService.getDeals(minReviews, minPrice, maxPrice, minRating));
     }
 
     @GetMapping("/getInvestments")
-    public ResponseEntity<List<GameInvestmentDTO>> getInvestments(){
-        return ResponseEntity.ok(gameService.getInvestments());
+    @Operation(
+        summary = "Get best time-value games",
+        description = "Returns games sorted by average playtime-to-price ratio. Filter by price range and minimum average playtime."
+    )
+    @ApiResponse(responseCode = "200", description = "Games retrieved successfully")
+    public ResponseEntity<List<GameInvestmentDTO>> getInvestments(
+        @RequestParam(defaultValue = "1") @Min(1) int minPlayers,
+        @RequestParam(defaultValue = "1") @Min(0) double minPrice,
+        @RequestParam(defaultValue = "100") @Min(1) @Max(1000) double maxPrice,
+        @RequestParam(defaultValue = "0") @Min(0) double minAvgTime){
+        return ResponseEntity.ok(gameService.getInvestments(minPlayers, minPrice, maxPrice, minAvgTime));
     }
 
     @GetMapping("/getDiscussed")
+    @Operation(
+        summary = "Get most actively discussed games",
+        description = "Returns games with the most review activity in the shortest time window, based on recent reviews."
+    )
+    @ApiResponse(responseCode = "200", description = "Games retrieved successfully")
     public ResponseEntity<List<GameStatsDTO>> getDiscussed(){
         return ResponseEntity.ok(gameService.getDiscussed());
     }
 
     @GetMapping("/getTopGames")
-    public ResponseEntity<List<GameStatsDTO>> getTopGames(){
-        return ResponseEntity.ok(gameService.getTopGames());
+    @Operation(
+        summary = "Get top rated games",
+        description = "Returns the highest rated games. Only includes games with at least minReviews reviews to filter out games with a single inflated score."
+    )
+    @ApiResponse(responseCode = "200", description = "Games retrieved successfully")
+    public ResponseEntity<List<GameStatsDTO>> getTopGames(
+        @RequestParam(defaultValue = "3") @Min(1) int minReviews
+    ){
+        return ResponseEntity.ok(gameService.getTopGames(minReviews));
+    }
+
+    @GetMapping("/getGenreStats")
+    @Operation(
+        summary = "Genre analytics",
+        description = "Returns average rating and average hours played per player, grouped by genre. Admin only."
+    )
+    @ApiResponse(responseCode = "200", description = "Stats retrieved successfully")
+    public ResponseEntity<List<GenreStatsDTO>> getGenreStats(){
+        return ResponseEntity.ok(gameService.getGenreStats());
+    }
+
+    @GetMapping("/getOsPlatformStats")
+    @Operation(
+        summary = "OS platform analytics",
+        description = "Returns average rating grouped by number of supported operating systems (1, 2, or 3). Admin only."
+    )
+    @ApiResponse(responseCode = "200", description = "Stats retrieved successfully")
+    public ResponseEntity<List<OsPlatformStatsDTO>> getOsPlatformStats(){
+        return ResponseEntity.ok(gameService.getOsPlatformStats());
+    }
+
+    @GetMapping("/releaseYearStats")
+    @Operation(
+        summary = "Release year analytics",
+        description = "Returns average rating and total game count grouped by release year. Admin only."
+    )
+    @ApiResponse(responseCode = "200", description = "Stats retrieved successfully")
+    public ResponseEntity<List<ReleaseYearStatsDTO>> getReleaseYearStats() {
+        return ResponseEntity.ok(gameService.getReleaseYearStats());
     }
 }
