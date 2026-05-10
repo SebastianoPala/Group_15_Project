@@ -20,6 +20,9 @@ MONGO_DB_NAME = "PlayerHive"
 
 NUM_USERS = 15000            # Number of users to generate
 NUM_ROUNDS = 4
+MAX_USER_REVIEWS = 40
+MAX_GAMES = 40
+MAX_FRIENDS = 20
 
 
 fake = Faker()
@@ -300,8 +303,8 @@ def main():
     all_global_reviews = [] # Lista che andrà a popolare la nuova collection 'reviews'
         
     for i, user in enumerate(users_list):
-        # Raddoppiato il numero massimo di recensioni per utente (da 20 a 40)
-        M = random.randint(0, 40)
+
+        M = random.randint(0, MAX_USER_REVIEWS)
         user_reviews_temp = []
         
         for _ in range(M):
@@ -379,7 +382,7 @@ def main():
     game_playtime_stats = {g["_id"]["$oid"]: {"total_hours": 0.0, "user_count": 0} for g in games_list}
     
     for i, user in enumerate(users_list):
-        M = min(random.randint(0, 15), len(games_list))
+        M = min(random.randint(0, MAX_GAMES), len(games_list))
         selected_games = random.sample(games_list, M)
         total_hours = 0.0
         
@@ -436,7 +439,7 @@ def main():
                        and (oid, u_id) not in pending_requests]
         
         if not valid_cands: continue
-        M = random.randint(0, min(10, len(valid_cands)))
+        M = random.randint(0, min(MAX_FRIENDS, len(valid_cands)))
         if M == 0: continue
             
         N = random.randint(0, M)
