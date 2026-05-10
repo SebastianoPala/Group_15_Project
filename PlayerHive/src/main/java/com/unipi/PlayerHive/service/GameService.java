@@ -11,6 +11,7 @@ import com.unipi.PlayerHive.model.game.Game;
 import com.unipi.PlayerHive.model.user.User;
 import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.repository.ReviewRepository;
+import com.unipi.PlayerHive.repository.games.GameNeo4jRepository;
 import com.unipi.PlayerHive.repository.games.GameRepository;
 import com.unipi.PlayerHive.repository.users.UserRepository;
 import com.unipi.PlayerHive.utility.ArrayPager;
@@ -33,15 +34,17 @@ import java.util.NoSuchElementException;
 public class GameService {
 
     private final GameRepository gameRepository;
+    private final GameNeo4jRepository gameNeo4jRepository;
     private final GameMapper gameMapper;
     private final ReviewRepository reviewRepository;
     private final ReviewMapper reviewMapper;
     private final UserRepository userRepository;
 
-    public GameService(GameRepository gameRepository,
+    public GameService(GameRepository gameRepository, GameNeo4jRepository gameNeo4jRepository,
                        GameMapper gameMapper, ReviewRepository reviewRepository, ReviewMapper reviewMapper, UserRepository userRepository
     ){
         this.gameRepository = gameRepository;
+        this.gameNeo4jRepository = gameNeo4jRepository;
         this.gameMapper = gameMapper;
         this.reviewRepository = reviewRepository;
         this.reviewMapper = reviewMapper;
@@ -204,6 +207,19 @@ public class GameService {
 
     public List<ReleaseYearStatsDTO> getReleaseYearStats(){
         return gameRepository.getReleaseYearStats();
+    }
+
+    public List<GameRecommendationDTO> getRecommendations(){
+        return gameNeo4jRepository.getGameRecommendations(getAuthenticatedUser().getId(),10);
+    }
+
+    public List<TrendingGameDTO> getTrendingGames(){
+        return gameNeo4jRepository.getTrendingGamesAmongFriends(100);
+    }
+
+    public List<HiddenGemDTO> getHiddenGems(){
+
+        return gameNeo4jRepository.getHiddenGems(getAuthenticatedUser().getId(),10,10);
     }
 
 }

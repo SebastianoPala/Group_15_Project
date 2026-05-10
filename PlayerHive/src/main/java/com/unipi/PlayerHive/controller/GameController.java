@@ -160,4 +160,19 @@ public class GameController {
     public ResponseEntity<List<ReleaseYearStatsDTO>> getReleaseYearStats() {
         return ResponseEntity.ok(gameService.getReleaseYearStats());
     }
+
+    @GetMapping("/getRecommendations")
+    public ResponseEntity<List<GameRecommendationDTO>> getRecommendations(){
+        return ResponseEntity.ok(gameService.getRecommendations());
+    }
+
+    @GetMapping("/getTrending")
+    public ResponseEntity<List<TrendingGameDTO>> getTrendingGames(){
+        return ResponseEntity.ok(gameService.getTrendingGames());
+    }
+
+    @GetMapping("/getHiddenGems")
+    public ResponseEntity<List<HiddenGemDTO>> getHiddenGems(){
+        return ResponseEntity.ok(gameService.getHiddenGems());
+    }
 }

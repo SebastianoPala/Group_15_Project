@@ -3,6 +3,7 @@ package com.unipi.PlayerHive.controller;
 import com.unipi.PlayerHive.DTO.reviews.ReviewContainerDTO;
 import com.unipi.PlayerHive.DTO.users.*;
 import com.unipi.PlayerHive.DTO.users.friends.FriendContainerDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRecommendationDTO;
 import com.unipi.PlayerHive.DTO.users.friends.FriendRequestContainerDTO;
 import com.unipi.PlayerHive.model.user.UserPrincipal;
 import com.unipi.PlayerHive.service.UserService;
@@ -214,6 +215,16 @@ public class UserController {
     @GetMapping("/getMostActiveGamers")
     public ResponseEntity<List<ActiveGamerDTO>> getMostActiveGamers(){
         return ResponseEntity.ok(userService.getMostActiveGamers());
+    }
+
+    @GetMapping("/friendRecommendations")
+    public ResponseEntity<List<FriendRecommendationDTO>> getFriendRecommendations(){
+        return ResponseEntity.ok(userService.getFriendRecommendations());
+    }
+
+    @GetMapping("/gamingTwins")
+    public ResponseEntity<List<GamingTwinDTO>> getGamingTwins(){
+        return ResponseEntity.ok(userService.getGamingTwins());
     }
 
 }

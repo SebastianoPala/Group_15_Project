@@ -1,7 +1,9 @@
 package com.unipi.PlayerHive.repository.users;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
+import com.unipi.PlayerHive.DTO.users.GamingTwinDTO;
 import com.unipi.PlayerHive.DTO.users.friends.FriendDTO;
+import com.unipi.PlayerHive.DTO.users.friends.FriendRecommendationDTO;
 import com.unipi.PlayerHive.model.user.UserNeo4j;
 
 import org.springframework.data.domain.Page;
@@ -81,16 +83,18 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
     // INTERESTING QUERIES ===================================================
 
     // 1. The "Friend Recommendation" (Collaborative Filtering / Triadic Closure)
-    @Query("MATCH (u:User {id: $userId})-[:FRIENDS_WITH]-(mutual:User)-[:FRIENDS_WITH]-(suggested:User) " +
+    //TODO FIX RETURN VALUES
+    @Query("MATCH (u:User {id: $userId})-[:FRIENDS_WITH]->(mutual:User)-[:FRIENDS_WITH]->(suggested:User) " +
             "WHERE u <> suggested AND NOT (u)-[:FRIENDS_WITH]-(suggested) " +
             "RETURN suggested.username AS username, count(mutual) AS mutualFriendsCount " +
             "ORDER BY mutualFriendsCount DESC " +
             "LIMIT $limit")
-    List<Object> getFriendRecommendations(String userId, int limit);
+    List<FriendRecommendationDTO> getFriendRecommendations(String userId, int limit);
 
 
 
     // 3. The "Player Matchmaker" (Common Interests)
+    // todo seems identical to the others
     @Query("MATCH (u:User {id: $userId})-[:PLAYED]->(g:Game)<-[:PLAYED]-(other:User) " +
             "WHERE u <> other AND NOT (u)-[:FRIENDS_WITH]-(other) " +
             "RETURN other.username AS username, count(g) AS sharedGamesCount, collect(g.name) AS sharedGames " +
@@ -99,6 +103,7 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
     List<Object> getPlayerMatchmaker(String userId, int limit);
 
     // 4. The "Game's Core Community" (Degree Centrality)
+    // todo what even is this query brah
     @Query("MATCH (g:Game {id: $gameId})<-[:PLAYED]-(player:User) " +
             "RETURN player.username AS username, count { (player)-[:FRIENDS_WITH]-() } AS totalFriends " +
             "ORDER BY totalFriends DESC " +
@@ -106,29 +111,15 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
     List<Object> getGameCoreCommunity(String gameId, int limit);
 
 
-    // 7. Gaming Twin (Jaccard Similarity)
-    @Query("MATCH (u1:User {id: $userId})-[:PLAYED]->(g:Game)<-[:PLAYED]-(u2:User) " +
-            "WITH u1, u2, count(g) AS sharedGames " +
-            "MATCH (u1)-[:PLAYED]->(g1:Game) " +
-            "WITH u1, u2, sharedGames, count(g1) AS u1Total " +
-            "MATCH (u2)-[:PLAYED]->(g2:Game) " +
-            "WITH u2, sharedGames, u1Total, count(g2) AS u2Total " +
+    @Query("MATCH (u1:User {id: $userId}) " +
+            "WITH u1, COUNT { (u1)-[:PLAYED]->(:Game) } AS u1Total " +
+            "MATCH (u1)-[:PLAYED]->(g:Game)<-[:PLAYED]-(u2:User) " +
+            "WITH u2, u1Total, count(g) AS sharedGames " +
+            "WITH u2, u1Total, sharedGames, COUNT { (u2)-[:PLAYED]->(:Game) } AS u2Total " +
             "WITH u2, sharedGames, (u1Total + u2Total - sharedGames) AS unionGames " +
             "RETURN u2.username AS username, toFloat(sharedGames) / unionGames AS jaccardSimilarity " +
             "ORDER BY jaccardSimilarity DESC " +
             "LIMIT $limit")
-    List<Object> getGamingTwin(String userId, int limit);
-
-    // 8. The "Hidden Gem" Recommendation (Inverse Popularity)
-    @Query("MATCH (u:User {id: $userId})-[:FRIENDS_WITH]-(friend)-[:PLAYED]->(game:Game) " +
-            "WHERE NOT (u)-[:PLAYED]->(game) " +
-            "WITH game, count(DISTINCT friend) AS friendsPlaying " +
-            "MATCH (game)<-[:PLAYED]-(globalPlayer) " +
-            "WITH game, friendsPlaying, count(globalPlayer) AS globalPopularity " +
-            "WHERE globalPopularity < $nicheThreshold " +
-            "RETURN game.name AS title, friendsPlaying AS friendsPlaying, globalPopularity AS globalPopularity " +
-            "ORDER BY friendsPlaying DESC, globalPopularity ASC " +
-            "LIMIT $limit")
-    List<Object> getHiddenGems(String userId, int nicheThreshold, int limit);
+    List<GamingTwinDTO> getGamingTwins(String userId, int limit);
 
 }

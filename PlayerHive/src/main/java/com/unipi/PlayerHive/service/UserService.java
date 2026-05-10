@@ -388,4 +388,14 @@ public class UserService {
     public List<ActiveGamerDTO> getMostActiveGamers(){
         return userRepository.getMostActiveGamers();
     }
+
+    public List<FriendRecommendationDTO> getFriendRecommendations(){
+        String userId = getAuthenticatedUser().getId();
+        return userNeo4jRepository.getFriendRecommendations(userId,10);
+    }
+
+    public List<GamingTwinDTO> getGamingTwins(){
+        String userId = getAuthenticatedUser().getId();
+        return userNeo4jRepository.getGamingTwins(userId, 10);
+    }
 }
