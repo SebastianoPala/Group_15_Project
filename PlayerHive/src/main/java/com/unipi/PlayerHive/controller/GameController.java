@@ -182,6 +182,6 @@ public class GameController {
     public ResponseEntity<List<FriendMagnetDTO>> getFriendMagnet(
             @PathVariable String gameId,
             @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(gameService.getFriendMagnet(gameId, limit));
+        return ResponseEntity.ok(gameService.getRelatedGames(gameId, limit));
     }
 }

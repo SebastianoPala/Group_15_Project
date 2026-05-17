@@ -72,7 +72,7 @@ public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j,String>{
         "RETURN other.name AS name, count(DISTINCT u) AS sharedPlayers " +
         "ORDER BY sharedPlayers DESC " +
         "LIMIT $limit")
-    List<FriendMagnetDTO> getFriendMagnet(String gameId, int limit);
+    List<FriendMagnetDTO> getRelatedGames(String gameId, int limit);
 
 
 }
