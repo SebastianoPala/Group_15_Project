@@ -10,9 +10,9 @@ import java.util.List;
 @AllArgsConstructor
 public class UserReviewContainerDTO {
 
-    List<UserReviewDTO> reviews;
+    private List<UserReviewDTO> reviews;
 
-    int numPages;
+    private int numPages;
 
-    boolean isLastPage;
+    private boolean isLastPage;
 }

@@ -129,15 +129,11 @@ public class AdminService {
             gameImg = editGame.getImageURL();
         }
 
-        //TODO TEST
         if(updateReviewInfo && !game.getAllReviews().isEmpty()){
             List<String> reviews = game.getAllReviews().stream().map(old -> old.getReviewId().toString()).toList();
             long modified = reviewRepository.editInfoIn(reviews, gameName, gameImg);
             System.out.println(modified + " reviews had their info updated");
         }
-
-
-
 
         copyNonNullProperties(editGame,game);
 

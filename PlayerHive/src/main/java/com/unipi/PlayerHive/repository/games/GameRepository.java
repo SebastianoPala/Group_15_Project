@@ -71,6 +71,10 @@ public interface GameRepository extends MongoRepository<Game, String> {
     })
     OldGameReviewContainerDTO getGameReviews(String gameId, int skip, int limit);
 
+    @Query("{ '_id': ?0 }" +
+            "{ '$project': { '_id' : 0, 'name' : 1, 'image' : 1 } }")
+    Optional<GameNameImageDTO> getGameNameAndImageById(String gameId);
+
     // INTERESTING QUERIES ===========================================
 
     @Aggregation(pipeline = {

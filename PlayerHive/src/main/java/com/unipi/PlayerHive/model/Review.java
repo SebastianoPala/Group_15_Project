@@ -32,6 +32,12 @@ public class Review {
     private String username;
     private String pfpURL;
 
+    @Field("game_name")
+    private String gameName;
+
+    @Field("game_image")
+    private String gameImage;
+
     @Field("review_text")
     private String reviewText;
 

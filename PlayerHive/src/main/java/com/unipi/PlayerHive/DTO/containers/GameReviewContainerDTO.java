@@ -10,9 +10,9 @@ import java.util.List;
 @AllArgsConstructor
 public class GameReviewContainerDTO {
 
-    List<GameReviewDTO> reviews;
+    private List<GameReviewDTO> reviews;
 
-    int numPages;
+    private int numPages;
 
-    boolean isLastPage;
+    private boolean isLastPage;
 }

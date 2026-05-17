@@ -129,8 +129,11 @@ public class GameService {
             throw new ResourceAlreadyExistsException("The user already reviewed this game");
         }
 
-        Review review = new Review(null,new ObjectId(gameId),userIdObj,user.getUsername(),user.getPfpURL(),
-                                            addReviewDTO.getReviewText(), addReviewDTO.getScore(), LocalDateTime.now());
+        GameNameImageDTO gameNameImage =  gameRepository.getGameNameAndImageById(gameId)
+                .orElseThrow(() -> new NoSuchElementException("the specified game does not exist"));
+
+        Review review = new Review(null,new ObjectId(gameId),userIdObj,user.getUsername(),user.getPfpURL(),gameNameImage.getGameName(),
+                                            gameNameImage.getGameImage(), addReviewDTO.getReviewText(), addReviewDTO.getScore(), LocalDateTime.now());
 
         // the review is saved in the Review collection ...
         Review savedReview = reviewRepository.save(review);
