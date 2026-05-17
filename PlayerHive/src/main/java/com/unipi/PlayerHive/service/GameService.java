@@ -223,4 +223,8 @@ public class GameService {
         return gameNeo4jRepository.getHiddenGems(getAuthenticatedUser().getId(),10,10);
     }
 
+    public List<FriendMagnetDTO> getRelatedGames(String gameId, int limit) {
+        return gameNeo4jRepository.getRelatedGames(gameId, limit);
+    }
+
 }

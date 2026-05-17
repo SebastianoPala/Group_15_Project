@@ -1,51 +1,50 @@
 package com.unipi.PlayerHive.config;
 
+import com.unipi.PlayerHive.DTO.ErrorResponseDTO;
 import com.unipi.PlayerHive.config.Exceptions.ResourceAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.server.MethodNotAllowedException;
 
-import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> generalExceptionHandler(Exception e) {
-     ///   return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server. Message:" +e.toMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.toString()); // TODO REMOVE, left for debug
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponseDTO> validationExceptionHandler(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO("Validation Failed", message));
     }
 
     @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<String> noSuchElementExceptionHandler(NoSuchElementException e){
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
-
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<String> httpRequestMethodNotSupportedExceptionHandler(HttpRequestMethodNotSupportedException e){
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body("The method is not allowed");
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> illegalArgumentExceptionHandler(IllegalArgumentException e){
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("The user provided an illegal argument. CAUSE: " + e.getMessage());
+    public ResponseEntity<ErrorResponseDTO> noSuchElementExceptionHandler(NoSuchElementException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO("Not Found", e.getMessage()));
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
-    public ResponseEntity<String> resourceAlreadyExistsExceptionHandler(ResourceAlreadyExistsException e){
-        return ResponseEntity.status(HttpStatus.CONFLICT).body("The following resource is already present: " + e.getMessage());
+    public ResponseEntity<ErrorResponseDTO> resourceAlreadyExistsExceptionHandler(ResourceAlreadyExistsException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponseDTO("Already Exists", e.getMessage()));
     }
-    /*
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponseDTO> illegalArgumentExceptionHandler(IllegalArgumentException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO("Invalid Request", e.getMessage()));
+    }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> httpRequestMethodNotSupportedExceptionHandler(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ErrorResponseDTO("Method Not Allowed", "HTTP method not supported for this endpoint"));
+    }
 
-
-    @ExceptionHandler()
-    public ResponseEntity<Map<String,String>>
-
-    */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDTO> generalExceptionHandler(Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponseDTO("Server Error", "An unexpected error occurred"));
+    }
 }

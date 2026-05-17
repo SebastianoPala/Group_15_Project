@@ -400,4 +400,5 @@ public class UserService {
         String userId = getAuthenticatedUser().getId();
         return userNeo4jRepository.getGamingTwins(userId, 10);
     }
+
 }

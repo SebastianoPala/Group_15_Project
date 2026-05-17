@@ -136,8 +136,9 @@ public interface GameRepository extends MongoRepository<Game, String> {
         "{ $match: { countScore: { $gt: 0 }, numPlayers: { $gt: 0 } } }",
         "{ $project: { genres: 1, avgScore: { $divide: ['$sumScore', '$countScore'] }, avgHoursPerPlayer: { $divide: ['$totalHoursPlayed', '$numPlayers'] } } }",
         "{ $unwind: '$genres' }",
-        "{ $group: {_id : '$genres', avgScore: { $avg: '$avgScore' }, avgHoursPerPlayer: { $avg: '$avgHoursPerPlayer' }, totalGames: { $sum: 1 } } }",
-        "{ $sort: { avgScore: -1 } }"
+        "{ $group: { _id: '$genres', avgScore: { $avg: '$avgScore' }, avgHoursPerPlayer: { $avg: '$avgHoursPerPlayer' }, totalGames: { $sum: 1 } } }",
+        "{ $sort: { avgScore: -1 } }",
+        "{ $project: { _id: 0, genre: '$_id', avgScore: { $round: ['$avgScore', 2] }, avgHoursPerPlayer: { $round: ['$avgHoursPerPlayer', 2] }, totalGames: 1 } }"
     })
     List<GenreStatsDTO> getGenreStats();
 
@@ -145,15 +146,17 @@ public interface GameRepository extends MongoRepository<Game, String> {
         "{ $match: { countScore: { $gt: 0 } } }",
         "{ $project: { osCount: { $size: '$supportedOS' }, avgScore: { $divide: ['$sumScore', '$countScore'] } } }",
         "{ $group: { _id: '$osCount', avgScore: { $avg: '$avgScore' }, totalGames: { $sum: 1 } } }",
-        "{ $sort: { _id: 1 } }"
+        "{ $sort: { _id: 1 } }",
+        "{ $project: { _id: 0, osCount: '$_id', avgScore: { $round: ['$avgScore', 2] }, totalGames: 1 } }"
     })
     List<OsPlatformStatsDTO> getOsPlatformStats();
-    
+
     @Aggregation(pipeline = {
         "{ $match: { countScore: { $gt: 0 }, release_date: { $ne: null } } }",
         "{ $project: { releaseYear: { $year: '$release_date' }, avgScore: { $divide: ['$sumScore', '$countScore'] } } }",
         "{ $group: { _id: '$releaseYear', avgScore: { $avg: '$avgScore' }, totalGames: { $sum: 1 } } }",
-        "{ $sort: { _id: 1 } }"
+        "{ $sort: { _id: 1 } }",
+        "{ $project: { _id: 0, releaseYear: '$_id', avgScore: { $round: ['$avgScore', 2] }, totalGames: 1 } }"
     })
     List<ReleaseYearStatsDTO> getReleaseYearStats();
 }

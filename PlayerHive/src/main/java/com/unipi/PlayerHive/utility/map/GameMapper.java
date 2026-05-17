@@ -9,5 +9,9 @@ public interface GameMapper {
 
     GameInfoDTO gameToGameInfoDTO(Game game);
 
+    GameSearchDTO gameToGameSearchDTO(Game game);
+
     Game editGameDTOtoGame(AddGameDTO addGameDTO);
+
+    GameInfoDTO gameLightDTOToGameInfoDTO(GameInvestmentDTO game);
 }

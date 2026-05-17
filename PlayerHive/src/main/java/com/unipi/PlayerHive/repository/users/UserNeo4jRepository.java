@@ -2,6 +2,7 @@ package com.unipi.PlayerHive.repository.users;
 
 import com.unipi.PlayerHive.DTO.games.LibraryGameDTO;
 import com.unipi.PlayerHive.DTO.users.GamingTwinDTO;
+
 import com.unipi.PlayerHive.DTO.users.friends.FriendDTO;
 import com.unipi.PlayerHive.DTO.users.friends.FriendRecommendationDTO;
 import com.unipi.PlayerHive.model.user.UserNeo4j;
@@ -97,7 +98,7 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j,String> {
     // todo seems identical to the others
     @Query("MATCH (u:User {id: $userId})-[:PLAYED]->(g:Game)<-[:PLAYED]-(other:User) " +
             "WHERE u <> other AND NOT (u)-[:FRIENDS_WITH]-(other) " +
-            "RETURN other.username AS username, count(g) AS sharedGamesCount, collect(g.name) AS sharedGames " +
+            "RETURN other.username AS username, count(g) AS sharedGamesCount, collect(g.name) [0..10] AS sharedGames " +
             "ORDER BY sharedGamesCount DESC " +
             "LIMIT $limit")
     List<Object> getPlayerMatchmaker(String userId, int limit);
